@@ -310,3 +310,19 @@ test('Task Workbench blocks expired and forecasted non-job opportunities before 
   assert.match(html, /function saveDraft\(\)\{if\(!currentOpportunity\).*?const sourceGate=opportunityGate\(\);if\(!sourceGate\.ok\)/);
   assert.match(html, /function approveOffer\(\)\{const sourceGate=opportunityGate\(\);if\(!sourceGate\.ok\)/);
 });
+
+
+test('portable marketing skill packs preserve zero-cost, evidence and no-external-action constraints', async () => {
+  const readme = await source('skills/README.md');
+  const seo = await source('skills/seo-audit/SKILL.md');
+  const copy = await source('skills/copywriting/SKILL.md');
+  const research = await source('skills/customer-research/SKILL.md');
+  const license = await source('skills/LICENSE-MARKETING-SKILLS');
+  for (const skill of [seo, copy, research]) {
+    assert.match(skill, /Zero-cost and safety constraints/);
+    assert.match(skill, /Do not|Never/);
+  }
+  assert.match(readme, /not yet wired into the current static UI/);
+  assert.match(readme, /0 EUR/);
+  assert.match(license, /MIT License/);
+});
