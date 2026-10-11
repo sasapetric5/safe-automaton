@@ -20,8 +20,8 @@ function request(body, options = {}) {
     body: options.method === 'GET' ? undefined : (typeof body === 'string' ? body : JSON.stringify(body))
   });
 }
-const valid = { taskType: 'seo', title: 'SEO provera', brief: 'Proveri dostavljene nalaze', evidence: 'Naslov postoji; indeksiranje nije provereno.' };
-const enabledEnv = { SAFE_AUTOMATON_AI_ENABLED: 'true', AI: { run: async () => ({ response: '## Nacrt\n\nPotrebna je ljudska provera.' }) } };
+const TEST_TOKEN = 'a'.repeat(40);\nconst valid = { taskType: 'seo', title: 'SEO provera', brief: 'Proveri dostavljene nalaze', evidence: 'Naslov postoji; indeksiranje nije provereno.' };
+const enabledEnv = { SAFE_AUTOMATON_AI_ENABLED: 'true', SAFE_AUTOMATON_AI_TOKEN: TEST_TOKEN, AI: { run: async () => ({ response: '## Nacrt\n\nPotrebna je ljudska provera.' }) } };
 
 test('AI endpoint is disabled by default and does not call model', async () => {
   let called = false;
@@ -36,7 +36,7 @@ test('AI endpoint validates method, origin, JSON and task type', async () => {
   assert.equal((await onRequest({ request: request(valid, { origin: 'https://evil.example' }), env: enabledEnv })).status, 403);
   assert.equal((await onRequest({ request: request('{invalid'), env: enabledEnv })).status, 400);
   assert.equal((await onRequest({ request: request({ ...valid, taskType: 'shell' }), env: enabledEnv })).status, 400);
-  assert.equal((await onRequest({ request: request({ ...valid, title: '' }), env: enabledEnv })).status, 400);
+  assert.equal((await onRequest({ request: request({ ...valid, title: '' }), env: enabledEnv })).status, 400);\n  assert.equal((await onRequest({ request: request(valid, { token: '' }), env: enabledEnv })).status, 401);\n  assert.equal((await onRequest({ request: request(valid), env: { SAFE_AUTOMATON_AI_ENABLED: 'true', AI: enabledEnv.AI } })).status, 503);
 });
 
 test('AI endpoint rejects oversized bodies before inference', async () => {
@@ -47,7 +47,7 @@ test('AI endpoint rejects oversized bodies before inference', async () => {
 
 test('AI endpoint uses fixed model, bounded output and labels result as unverified draft', async () => {
   let seenModel, seenInput;
-  const env = { SAFE_AUTOMATON_AI_ENABLED: 'true', AI: { run: async (model, input) => {
+  const env = { SAFE_AUTOMATON_AI_ENABLED: 'true', SAFE_AUTOMATON_AI_TOKEN: TEST_TOKEN, AI: { run: async (model, input) => {
     seenModel = model; seenInput = input; return { response: 'Radni nacrt.' };
   } } };
   const response = await onRequest({ request: request(valid), env });
