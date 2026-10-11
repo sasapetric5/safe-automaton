@@ -61,6 +61,37 @@ function blobDownload(name,text,type){const url=URL.createObjectURL(new Blob([te
 function renderRecords(){$('records').innerHTML=records.length?records.slice().reverse().map((r,i)=>'<div class="status"><strong>'+esc(r.title)+'</strong> · '+esc(r.createdAt)+' · QA '+esc(r.qaCount)+'/'+esc(r.qaTotal)+' <button data-open="'+esc(r.id)+'">Otvori</button></div>').join(''):'Nema sačuvanih zapisa.'}
 $('build').addEventListener('click',build);
 $('taskType').addEventListener('change',()=>{$('audit').hidden=$('taskType').value!=='seo';});
+function formatSeoAudit(data,title='SEO provera'){
+  const findings=Array.isArray(data.findings)?data.findings:[];
+  const actionable=findings.filter(f=>f.status==='FAIL'||f.status==='WARN')
+    .sort((a,b)=>({HIGH:0,MEDIUM:1,REVIEW:2,INFO:3}[a.priority]??4)-({HIGH:0,MEDIUM:1,REVIEW:2,INFO:3}[b.priority]??4));
+  const lines=[
+    '# SEO Evidence Audit — '+title,
+    '',
+    '**Vreme provere:** '+(data.checkedAt||'nije navedeno'),
+    '**Zatraženi URL:** '+(data.requestedUrl||'nije navedeno'),
+    '**Konačni URL:** '+(data.finalUrl||'nije navedeno'),
+    '**HTTP status:** '+(data.httpStatus??'nije naveden'),
+    '**Content-Type:** '+(data.contentType||'nije naveden'),
+    '**Veličina HTML-a:** '+(data.htmlCharacters??'nije navedena')+' znakova',
+    '**Opseg dokaza:** '+(data.auditScope?.evidenceSource||'initial_html')+' · JavaScript izvršen: '+(data.auditScope?.javascriptExecuted?'da':'ne')+' · Renderovani DOM proveren: '+(data.auditScope?.renderedDomChecked?'da':'ne'),
+    '**Sažetak:** PASS '+(data.summary?.pass??0)+' · WARN '+(data.summary?.warn??0)+' · FAIL '+(data.summary?.fail??0)+' · NIJE PROVERENO '+(data.summary?.notChecked??0),
+    '**Prioriteti:** visok '+(data.summary?.highPriority??0)+' · srednji '+(data.summary?.mediumPriority??0)+' · ljudska/posebna provera '+(data.summary?.reviewPriority??0),
+    '',
+    '## Prioritetni sledeći koraci',
+    ...(actionable.length?actionable.map((f,i)=>(i+1)+'. ['+f.status+'] ['+(f.priority||'REVIEW')+'] '+f.label+' — '+f.recommendation):['Nisu pronađeni FAIL/WARN nalazi u ovom skupu dokaza; to ne znači da je cela stranica SEO-ispravna.']),
+    '',
+    '## Nalazi zasnovani na preuzetom HTML-u',
+    ...(findings.length?findings.map(f=>'- ['+f.status+'] ['+(f.priority||'INFO')+'] **'+f.label+'** — '+f.evidence+'\n  Pouzdanost: '+(f.confidence||'nije klasifikovana')+'; izvor dokaza: '+(f.evidenceSource||'initial_html')+'\n  Sledeći korak: '+f.recommendation):['Nema nalaza u odgovoru.']),
+    '',
+    '## Ograničenja',
+    ...(Array.isArray(data.limitations)?data.limitations.map(x=>'- '+x):['Ograničenja nisu navedena u odgovoru.']),
+    '',
+    '## Status',
+    'Automatski prikupljeni tehnički dokazi; ljudska provera i vizuelni testovi nisu završeni. Nije poslato klijentu.'
+  ];
+  return lines.join('\n');
+}
 $('audit').addEventListener('click',async()=>{
   const source=$('source').value.trim();
   if($('taskType').value!=='seo'){ $('auditStatus').textContent='Stvarni audit je trenutno dostupan samo za SEO zadatke.'; return; }
@@ -70,29 +101,7 @@ $('audit').addEventListener('click',async()=>{
     const response=await fetch('/api/seo-audit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:source})});
     const data=await response.json();
     if(!response.ok||!data.ok)throw new Error(data.error||'SEO audit nije uspeo.');
-    const lines=[
-      '# SEO Evidence Audit — '+($('title').value.trim()||'SEO provera'),
-      '',
-      '**Vreme provere:** '+data.checkedAt,
-      '**Zatraženi URL:** '+data.requestedUrl,
-      '**Konačni URL:** '+data.finalUrl,
-      '**HTTP status:** '+data.httpStatus,
-      '**Content-Type:** '+data.contentType,
-      '**Veličina HTML-a:** '+data.htmlCharacters+' znakova',
-      '**Opseg dokaza:** '+(data.auditScope?.evidenceSource||'initial_html')+' · JavaScript izvršen: '+(data.auditScope?.javascriptExecuted?'da':'ne')+' · Renderovani DOM proveren: '+(data.auditScope?.renderedDomChecked?'da':'ne'),
-      '**Sažetak:** PASS '+data.summary.pass+' · WARN '+data.summary.warn+' · FAIL '+data.summary.fail+' · NIJE PROVERENO '+data.summary.notChecked,
-      '**Prioriteti:** visok '+(data.summary.highPriority??0)+' · srednji '+(data.summary.mediumPriority??0)+' · ljudska/posebna provera '+(data.summary.reviewPriority??0),
-      '',
-      '## Nalazi zasnovani na preuzetom HTML-u',
-      ...data.findings.map(f=>'- ['+f.status+'] ['+(f.priority||'INFO')+'] **'+f.label+'** — '+f.evidence+'\\n  Pouzdanost: '+(f.confidence||'nije klasifikovana')+'; izvor dokaza: '+(f.evidenceSource||'initial_html')+'\\n  Sledeći korak: '+f.recommendation),
-      '',
-      '## Ograničenja',
-      ...data.limitations.map(x=>'- '+x),
-      '',
-      '## Status',
-      'Automatski prikupljeni tehnički dokazi; ljudska provera i vizuelni testovi nisu završeni. Nije poslato klijentu.'
-    ];
-    artifact=lines.join('\n');
+    artifact=formatSeoAudit(data,$('title').value.trim()||'SEO provera');
     activeRecordId=null;
     $('output').textContent=artifact;
     $('copy').disabled=$('download').disabled=$('save').disabled=false;
