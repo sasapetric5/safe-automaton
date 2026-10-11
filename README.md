@@ -24,6 +24,7 @@ Razvojni prototip za istraživanje javnih poslovnih prilika, procenu izvodljivos
 
 - Opportunity Hunter: ručno preuzimanje sa trenutno povezanih javnih izvora; rezultati i istraživačke prilike čuvaju se u `localStorage`.
 - Task Workbench: procena neto zarade po satu, sposobnosti, roka, šanse za dobijanje posla i rizika.
+- Execution Lab: SEO evidence audit sa prioritetnim sledećim koracima, plus odvojene ručne QA kontrolne liste za SEO, istraživanje, tehnički QA i plan isporuke. Kontrolne liste ne znače da je zadatak autonomno izvršen.
 - Generisanje i čuvanje nacrta ponude; izričito odobrenje za ručno slanje; izvoz teksta.
 - Praćenje faza zadatka: procena, prihvatanje ponude, izrada, provera kvaliteta, isporuka, potvrda rezultata i ručno evidentiranje naplate.
 - JSON izvoz za rezervnu kopiju.
