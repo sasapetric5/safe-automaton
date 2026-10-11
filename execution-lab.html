@@ -124,7 +124,7 @@ $('audit').addEventListener('click',async()=>{
   $('audit').disabled=true;$('auditStatus').textContent='Prikupljam javne HTML dokaze…';
   try{
     const response=await fetch('/api/seo-audit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:source})});
-    const data=await response.json();
+    data=await response.json();
     if(!response.ok||!data.ok)throw new Error(data.error||'SEO audit nije uspeo.');
     artifact=formatSeoAudit(data,$('title').value.trim()||'SEO provera');
     activeRecordId=null;
@@ -146,6 +146,7 @@ $('aiDraft').addEventListener('click',async()=>{
   const aiToken=$('aiToken').value.trim();
   if(aiToken.length<32){$('auditStatus').textContent='Unesi AI pristupni token (najmanje 32 znaka); token nije sačuvan.';return;}
   $('aiDraft').disabled=true;$('auditStatus').textContent='Proveravam da li je AI eksplicitno omogućen…';
+  let data = null;
   try{
     const response=await fetch('/api/ai-task',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
     const data=await response.json();
@@ -157,7 +158,18 @@ $('aiDraft').addEventListener('click',async()=>{
     $('saved').textContent='AI nacrt napravljen; nije nezavisno proveren niti poslat. Ručni QA je resetovan.';
     $('auditStatus').textContent='AI nacrt je spreman za ljudsku proveru. Proveri činjenice, preporuke i ograničenja pre upotrebe.';
   }catch(error){
-    $('auditStatus').textContent='AI nacrt nije napravljen: '+(error instanceof Error?error.message:'nepoznata greška')+'. Ako je AI isključen ili binding nije podešen, nije pozvan model.';
+    const message = error instanceof Error ? error.message : 'nepoznata greška';
+    let diagnostic = '';
+    try {
+      // Show only non-secret diagnostic metadata returned by the endpoint.
+      const responseData = typeof data !== 'undefined' ? data : null;
+      if (responseData?.diagnosticCode) {
+        diagnostic = ' [kod: '+responseData.diagnosticCode+
+          '; host: '+(responseData.runtimeHost||'nepoznat')+
+          '; flag: '+(responseData.observedEnableFlag||'nepoznat')+']';
+      }
+    } catch {}
+    $('auditStatus').textContent='AI nacrt nije napravljen: '+message+diagnostic+'. Model nije pozvan ako je endpoint odbio zahtev pre inference-a.';
   }finally{$('aiDraft').disabled=false;}
 });
 $('reset').addEventListener('click',()=>{['title','brief','source','deadline','facts','aiToken'].forEach(id=>$(id).value='');artifact='';activeRecordId=null;$('output').textContent='Forma je očišćena.';$('copy').disabled=$('download').disabled=$('save').disabled=true;getChecks().forEach(x=>x.checked=false);qa()});
