@@ -22,13 +22,8 @@
 <div class="row" style="margin-top:12px"><button class="primary" id="build">Izradi radni rezultat</button><button id="audit">Pokreni stvarnu SEO proveru</button><button id="reset">Očisti formu</button></div><div id="auditStatus" class="small" aria-live="polite">SEO audit trenutno je ograničen na savremenikoreni.com i www.savremenikoreni.com.</div>
 </section>
 <section class="card span6"><h2>2. Kontrola kvaliteta</h2><p class="small">Označi samo provere koje si stvarno izvršio. Ove kućice nisu automatski dokazi da je rezultat ispravan.</p>
-<div id="qaChecks">
-<label class="check"><input type="checkbox" value="brief"> Rezultat odgovara brief-u i traženom formatu</label>
-<label class="check"><input type="checkbox" value="facts"> Tvrdnje se oslanjaju na proverene činjenice ili su označene kao nepoznate</label>
-<label class="check"><input type="checkbox" value="scope"> Obim, ograničenja i pretpostavke su jasno navedeni</label>
-<label class="check"><input type="checkbox" value="risk"> Nema tajni, nepotrebnih ličnih podataka ni nedozvoljenih radnji</label>
-<label class="check"><input type="checkbox" value="test"> Provera ili test naveden u rezultatu je zaista izvršen, ili je jasno označen kao predlog</label>
-</div>
+<p id="skillInfo" class="small">Procedura i kontrolna lista prilagođavaju se izabranoj vrsti zadatka. Sve provere su ručne.</p>
+<div id="qaChecks"></div>
 <div id="qaStatus" class="status">Napravi rezultat, zatim izvrši provere.</div>
 <div class="notice" style="margin-top:12px">Ne izvoziti kao „spremno za klijenta” dok relevantne provere nisu završene. Ovaj ekran ne proverava istinitost unetih činjenica niti pokreće stvarne testove.</div>
 </section>
@@ -47,6 +42,18 @@ let records=readRecords();
 function readRecords(){try{const x=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(x)?x:[]}catch{return []}}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function getChecks(){return [...document.querySelectorAll('#qaChecks input')]}
+const procedures={
+ seo:{name:'SEO audit / AI-pretraga',path:'./skills/seo-audit/SKILL.md',checks:[['brief','Nalazi odgovaraju cilju i konkretnoj stranici'],['evidence','Svaki nalaz ima dokaz ili je označen kao neproveren'],['indexability','Status, robots i canonical provereni u okviru dostupnih dokaza'],['content','Naslov, opis, H1, slike i linkovi pregledani'],['structured','Strukturirani podaci i ograničenja provere jasno navedeni'],['recommendations','Preporuke imaju prioritet i proverljiv sledeći korak'],['claims','Nema izmišljenih rangiranja, saobraćaja ili garancija']]},
+ research:{name:'Istraživanje / provera prilike',path:'./skills/customer-research/SKILL.md',checks:[['brief','Istraživačko pitanje i odluka koju treba podržati su jasni'],['sources','Izvori i URL-ovi zabeleženi'],['freshness','Aktuelnost, rok i status provereni na primarnom izvoru'],['evidence','Citati su verni, a parafraze jasno označene'],['counterevidence','Kontra-dokazi i ograničenja uzorka navedeni'],['hypotheses','Hipoteze su odvojene od potvrđenih činjenica'],['privacy','Nema nepotrebnih ličnih podataka niti neodobrenog kontakta']]},
+ qa:{name:'Tehnički QA plan',path:'./skills/README.md',checks:[['brief','Kriterijumi prihvatanja proizlaze iz brief-a'],['environment','Okruženje i verzija aplikacije zabeleženi'],['happy','Osnovni uspešan scenario zaista pokrenut'],['negative','Prazni, nevažeći i granični unosi provereni'],['evidence','Za svaki test zabeleženi stvarni rezultat i dokaz'],['regression','Relevantne regresije proverene'],['external','Nije izvršena neodobrena spoljna radnja']]},
+ scope:{name:'Plan isporuke / obim posla',path:'./skills/copywriting/SKILL.md',checks:[['brief','Isporuke i isključenja iz obima su jasni'],['acceptance','Svaka isporuka ima proverljiv kriterijum prihvatanja'],['dependencies','Pristupi, zavisnosti i otvorena pitanja navedeni'],['schedule','Rok je procenjen tek nakon provere zavisnosti'],['commercial','Cena, revizije, prava i plaćanje nisu pretpostavljeni'],['risk','Rizici i nepoznanice su eksplicitni'],['approval','Dokument ostaje nacrt dok ga korisnik ne pregleda']]}
+};
+function renderProcedure(){
+ const type=$('taskType').value,procedure=procedures[type]||procedures.seo;
+ $('skillInfo').innerHTML='Aktivna procedura: <strong>'+esc(procedure.name)+'</strong> · <a href="'+procedure.path+'" target="_blank" rel="noopener noreferrer">Otvori instrukcije ↗</a><br>Ovo je lokalna kontrolna lista; ne pokreće AI model i nije dokaz da su provere izvršene.';
+ $('qaChecks').innerHTML=procedure.checks.map(([value,label])=>'<label class="check"><input type="checkbox" value="'+value+'"> '+esc(label)+'</label>').join('');
+ qa();
+}
 function qa(){const checks=getChecks(),done=checks.filter(x=>x.checked).length;$('qaStatus').innerHTML=done===checks.length&&artifact?'<span class="good">Sve QA stavke su ručno označene. To nije nezavisna verifikacija.</span>':'Završeno '+done+' od '+checks.length+' ručnih provera. '+(artifact?'Izvoz je moguć, ali nepotvrđene provere ostaju rizik.':'Prvo izradi rezultat.');}
 function template(type,title,brief,source,deadline,facts){
 const labels={seo:'SEO / AI-pretraga kontrolna lista',research:'Izveštaj o poslovnoj prilici',qa:'Plan tehničkog QA testiranja',scope:'Plan isporuke'};
@@ -60,7 +67,7 @@ function build(){activeRecordId=null;const title=$('title').value.trim(),brief=$
 function blobDownload(name,text,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function renderRecords(){$('records').innerHTML=records.length?records.slice().reverse().map((r,i)=>'<div class="status"><strong>'+esc(r.title)+'</strong> · '+esc(r.createdAt)+' · QA '+esc(r.qaCount)+'/'+esc(r.qaTotal)+' <button data-open="'+esc(r.id)+'">Otvori</button></div>').join(''):'Nema sačuvanih zapisa.'}
 $('build').addEventListener('click',build);
-$('taskType').addEventListener('change',()=>{$('audit').hidden=$('taskType').value!=='seo';});
+$('taskType').addEventListener('change',()=>{$('audit').hidden=$('taskType').value!=='seo';renderProcedure();});
 function formatSeoAudit(data,title='SEO provera'){
   const findings=Array.isArray(data.findings)?data.findings:[];
   const actionable=findings.filter(f=>f.status==='FAIL'||f.status==='WARN')
@@ -119,5 +126,5 @@ $('download').addEventListener('click',()=>{if(artifact)blobDownload('safe-autom
 $('save').addEventListener('click',()=>{if(!artifact)return;const now=new Date().toISOString(),title=$('title').value.trim(),existing=(activeRecordId&&records.find(r=>r.id===activeRecordId))||records.slice().reverse().find(r=>r.title===title&&r.artifact===artifact);const rec={id:existing?.id||(crypto.randomUUID?crypto.randomUUID():String(Date.now())),title,createdAt:existing?.createdAt||now,updatedAt:existing?now:undefined,artifact,qaCount:getChecks().filter(x=>x.checked).length,qaTotal:getChecks().length,qa:getChecks().map(x=>({label:x.parentElement.textContent.trim(),checked:x.checked})),status:'DRAFT_NOT_SENT'};if(existing){Object.assign(existing,rec);activeRecordId=existing.id}else{records.push(rec);activeRecordId=rec.id}try{localStorage.setItem(KEY,JSON.stringify(records));$('saved').textContent=existing?'Postojeći nacrt ažuriran; duplikat nije napravljen. Status: nije poslato.':'Sačuvano lokalno. Status: nacrt, nije poslato.';renderRecords()}catch{$('saved').textContent='Čuvanje nije uspelo. Izvezi rezultat kao Markdown.'}});
 $('records').addEventListener('click',e=>{const b=e.target.closest('button[data-open]');if(!b)return;const r=records.find(x=>x.id===b.dataset.open);if(r){activeRecordId=r.id;artifact=r.artifact;$('output').textContent=artifact;$('title').value=r.title;$('copy').disabled=$('download').disabled=$('save').disabled=false;$('saved').textContent='Učitano iz lokalne evidencije; nacrt nije poslat.';getChecks().forEach((x,i)=>x.checked=Boolean(r.qa?.[i]?.checked));qa()}});
 $('exportJson').addEventListener('click',()=>blobDownload('safe-automaton-execution-records.json',JSON.stringify(records,null,2),'application/json;charset=utf-8'));
-renderRecords();qa();
+renderRecords();renderProcedure();qa();
 </script></body></html>
