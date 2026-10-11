@@ -52,9 +52,9 @@ Razvojni prototip za istraživanje javnih poslovnih prilika, procenu izvodljivos
 - Endpoint: `POST /api/ai-task`; подржани типови су `seo`, `research`, `qa` и `scope`.
 - Модел: `@cf/zai-org/glm-4.7-flash`, преко Cloudflare Pages Functions binding-а `AI`.
 - Нема спољног API кључа, али inference користи Cloudflare Workers AI квоту. Бесплатна квота и доступност модела могу да се промене.
-- Endpoint одбија позиве док `SAFE_AUTOMATON_AI_ENABLED` није експлицитно постављен на `true`, а binding `AI` не постоји. Нема аутоматског fallback-а на плаћени API.
+- Endpoint одбија позиве док `SAFE_AUTOMATON_AI_ENABLED` није експлицитно постављен на `true`, binding `AI` није додат и Cloudflare secret `SAFE_AUTOMATON_AI_TOKEN` (најмање 32 знака) није подешен. Сваки захтев мора послати тај токен у заглављу `X-Safe-Automaton-AI-Token`; UI га не чува. Нема аутоматског fallback-а на плаћени API.
 - **За строги буџет 0 EUR:** не укључивати док Cloudflare налог није потврђен на Workers Free плану и док није проверено да је модел доступан у бесплатном режиму. На Workers Paid плану употреба преко дневне бесплатне квоте може бити наплаћена. Апликација сама не може да гарантује да налог неће наплатити прекорачење.
-- Постављање `SAFE_AUTOMATON_AI_ENABLED=true` и додавање binding-а `AI` су ручни кораци у Cloudflare подешавањима; овај commit не мења налог, binding, продукцију нити покреће inference.
+- Постављање `SAFE_AUTOMATON_AI_ENABLED=true`, додавање binding-а `AI` и тајне `SAFE_AUTOMATON_AI_TOKEN` су ручни кораци у Cloudflare подешавањима; овај commit не мења налог, binding, продукцију нити покреће inference.
 - Захтев је ограничен на 12 KB; тип задатка је allowlist; endpoint нема веб-претраживање нити алате; сваки одговор је означен као непроверен нацрт за људски преглед.
 - Тестови користе mock AI binding и не троше Workers AI квоту.
 
