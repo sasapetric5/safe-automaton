@@ -20,6 +20,8 @@ Razvojni prototip za istraživanje javnih poslovnih prilika, procenu izvodljivos
 
 ## Trenutne mogućnosti
 
+- Prenosiva biblioteka skill-procedura: `skills/seo-audit/SKILL.md`, `skills/copywriting/SKILL.md` i `skills/customer-research/SKILL.md`. Ovo su instrukcije za budući runtime, nisu još povezane sa automatskim AI izvršavanjem; primenjuju pravila 0 EUR, proverljivih izvora i zabrane spoljnih radnji.
+
 - Opportunity Hunter: ručno preuzimanje sa trenutno povezanih javnih izvora; rezultati i istraživačke prilike čuvaju se u `localStorage`.
 - Task Workbench: procena neto zarade po satu, sposobnosti, roka, šanse za dobijanje posla i rizika.
 - Generisanje i čuvanje nacrta ponude; izričito odobrenje za ručno slanje; izvoz teksta.
