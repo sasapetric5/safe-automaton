@@ -53,7 +53,7 @@ test('Task Workbench requires human approval and does not send offers itself', a
 
 test('Execution Lab labels templates and QA as local/manual, not verified AI execution', async () => {
   const html = await source('execution-lab.html');
-  assert.match(html, /nije povezana sa AI modelom/);
+  assert.match(html, /AI generisanje je opciono i podrazumevano isključeno/i);
   assert.match(html, /Ove kućice nisu automatski dokazi/);
   assert.match(html, /ne pokreće proizvoljan kod/);
   assert.match(html, /safe-automaton-execution-lab-v1/);
