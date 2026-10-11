@@ -63,6 +63,14 @@ export async function onRequest(context) {
       enabled: false
     }, 503);
   }
+  const expectedToken = context.env?.SAFE_AUTOMATON_AI_TOKEN;
+  const providedToken = request.headers.get("X-Safe-Automaton-AI-Token") || "";
+  if (typeof expectedToken !== "string" || expectedToken.length < 32) {
+    return json({ error: "AI pristup nije bezbedno konfigurisan. Postavi tajnu SAFE_AUTOMATON_AI_TOKEN (najmanje 32 znaka)." }, 503);
+  }
+  if (providedToken.length < 32 || providedToken !== expectedToken) {
+    return json({ error: "Nedostaje ili nije ispravan AI pristupni token." }, 401);
+  }
   if (!context.env?.AI || typeof context.env.AI.run !== "function") {
     return json({ error: "Workers AI binding AI nije podešen." }, 503);
   }
