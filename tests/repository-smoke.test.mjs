@@ -274,3 +274,21 @@ test('Task Workbench does not treat language or country alone as automatic rejec
  assert.match(html,/stvarna ograničenja naručioca ili zakona/i);
  assert.doesNotMatch(html, /id="(?:languageGate|geographyGate)"/);
 });
+
+test('Opportunity Hunter labels job capability as unverified and distinguishes procurement/research calls from general funding', async () => {
+ const html=await source('opportunities.html');
+ assert.match(html,/function classifyOpportunity\(item\)/);
+ assert.match(html,/IZVODLJIVOST NIJE PROVERENA/);
+ assert.match(html,/NABAVKA \/ STUDIJA — nije nužno grant/);
+ assert.match(html,/ISTRAŽIVAČKI \/ INSTITUCIONALNI POZIV/);
+ assert.match(html,/Poklapanje ključnih reči, ne procena stvarne sposobnosti/);
+ const start=html.indexOf('function classifyOpportunity('),end=html.indexOf('\nfunction canonical(',start);
+ assert.ok(start>=0&&end>start);
+ const context={plainText:value=>String(value??'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()};
+ vm.createContext(context);
+ vm.runInContext(html.slice(start,end)+'\nglobalThis.classifyOpportunity=classifyOpportunity;',context);
+ assert.match(context.classifyOpportunity({kind:'job',title:'AI automation engineer',summary:'Build web tools'}).label,/IZVODLJIVOST NIJE PROVERENA/);
+ assert.match(context.classifyOpportunity({kind:'grant',title:'Study on the adoption of automation technologies'}).label,/NABAVKA \/ STUDIJA/);
+ assert.match(context.classifyOpportunity({kind:'grant',title:'Precision Medicine with AI Clinical Trial'}).label,/ISTRAŽIVAČKI \/ INSTITUCIONALNI POZIV/);
+ assert.match(context.classifyOpportunity({kind:'grant',title:'Digital innovation support for small companies'}).label,/MOGUĆE FINANSIRANJE/);
+});
