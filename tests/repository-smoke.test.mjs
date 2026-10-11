@@ -123,7 +123,7 @@ test('Opportunity Hunter scoring prioritizes title relevance and keyword boundar
  vm.createContext(context);
  vm.runInContext(html.slice(start,end)+'\nglobalThis.scoreText=scoreText;',context);
  const relevant=context.scoreText('Generic description',true,'jobKeywords','Senior React Full-stack Developer');
- const incidental=context.scoreText('Paid invoices; AI and automation mentioned incidentally',true,'jobKeywords','Enterprise Account Executive');
+ const incidental=context.scoreText('Paid invoices; automation mentioned incidentally',true,'jobKeywords','Enterprise Account Executive');
  assert.ok(relevant.score>incidental.score);
  assert.ok(relevant.hits.includes('web application'));
  assert.ok(!incidental.hits.includes('ai'));
