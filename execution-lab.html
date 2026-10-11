@@ -73,6 +73,19 @@ function formatSeoAudit(data,title='SEO provera'){
   const findings=Array.isArray(data.findings)?data.findings:[];
   const actionable=findings.filter(f=>f.status==='FAIL'||f.status==='WARN')
     .sort((a,b)=>({HIGH:0,MEDIUM:1,REVIEW:2,INFO:3}[a.priority]??4)-({HIGH:0,MEDIUM:1,REVIEW:2,INFO:3}[b.priority]??4));
+  const targetUrl=data.finalUrl||data.requestedUrl||'';
+  const isKoreni=/(^|\\.)((www\\.)?savremenikoreni\\.com)(?=[:/]|$)/i.test(targetUrl.replace(/^https?:\\/\\//i,''));
+  const verificationStep=f=>{
+    const label=String(f.label||'').toLowerCase();
+    if(/h1|glavni naslov/.test(label)&&!data.auditScope?.javascriptExecuted)
+      return 'Pre izmene proveri H1 u renderovanom DOM-u u pregledaču; ovaj audit ne izvršava JavaScript.';
+    if(/alt|slik/.test(label))
+      return 'Pregledaj konkretne slike: informativne slike dobijaju opisni alt, dekorativne slike prazan alt. Ponovi proveru.';
+    if(/meta opis|description/.test(label))
+      return 'Proveri da je opis jedinstven, tačan i prirodno napisan za ovu stranicu; ponovi audit i pregledaj prikaz u pretraživaču.';
+    return 'Primeni preporuku tek nakon ljudske provere; ponovi isti audit i uporedi novi status i dokaz.';
+  };
+  const fixPlan=actionable.map((f,i)=>(i+1)+'. **'+(f.priority||'REVIEW')+' — '+f.label+'**\\n   - Trenutni dokaz: '+(f.evidence||'Nije naveden')+'\\n   - Predložena radnja: '+(f.recommendation||'Potrebna je ljudska procena.')+'\\n   - Provera uspeha: '+verificationStep(f));
   const lines=[
     '# SEO Evidence Audit — '+title,
     '',
@@ -88,6 +101,10 @@ function formatSeoAudit(data,title='SEO provera'){
     '',
     '## Prioritetni sledeći koraci',
     ...(actionable.length?actionable.map((f,i)=>(i+1)+'. ['+f.status+'] ['+(f.priority||'REVIEW')+'] '+f.label+' — '+f.recommendation):['Nisu pronađeni FAIL/WARN nalazi u ovom skupu dokaza; to ne znači da je cela stranica SEO-ispravna.']),
+    '',
+    '## Plan popravki i provera uspeha',
+    ...(fixPlan.length?fixPlan:['Nema FAIL/WARN nalaza u početnom HTML-u. To nije potvrda da je stranica potpuno ispravna.']),
+    ...(isKoreni?['','### Napomena za Savremeni Koreni','Ovaj izveštaj je ograničen na početni HTML. Pre promene elemenata koji se mogu prikazivati kroz JavaScript, proveri stvarni prikaz stranice u pregledaču. Ne menjaj stranicu automatski na osnovu ovog izveštaja.']:[]),
     '',
     '## Nalazi zasnovani na preuzetom HTML-u',
     ...(findings.length?findings.map(f=>'- ['+f.status+'] ['+(f.priority||'INFO')+'] **'+f.label+'** — '+f.evidence+'\n  Pouzdanost: '+(f.confidence||'nije klasifikovana')+'; izvor dokaza: '+(f.evidenceSource||'initial_html')+'\n  Sledeći korak: '+f.recommendation):['Nema nalaza u odgovoru.']),
