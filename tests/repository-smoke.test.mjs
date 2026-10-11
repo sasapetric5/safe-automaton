@@ -342,7 +342,7 @@ test('SEO Evidence Audit report ranks actionable findings and keeps evidence sco
   vm.createContext(context);
   vm.runInContext(html.slice(start,end)+'\nglobalThis.formatSeoAudit=formatSeoAudit;',context);
   const result=context.formatSeoAudit({
-    checkedAt:'2026-10-11T10:00:00.000Z',requestedUrl:'https://example.test/',finalUrl:'https://example.test/',
+    checkedAt:'2026-10-11T10:00:00.000Z',requestedUrl:'https://savremenikoreni.com/',finalUrl:'https://savremenikoreni.com/',
     httpStatus:200,contentType:'text/html',htmlCharacters:2000,
     auditScope:{evidenceSource:'initial_html',javascriptExecuted:false,renderedDomChecked:false},
     summary:{pass:1,warn:1,fail:1,notChecked:1,highPriority:1,mediumPriority:1,reviewPriority:1},
