@@ -241,3 +241,27 @@ test('forecasted grants are clearly marked as not confirmed open, and grant numb
  assert.match(html,/sourceStatus:String\(get\('status','statusLabel','callStatus'\)\|\|''\)/);
 });
 
+
+
+test('Task Workbench blocks scoring until capability, deadline, and mandatory requirements pass preflight', async () => {
+ const html=await source('workbench.html');
+ for (const id of ['capabilityGate','deadlineGate','requirementsGate']) assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/function preflight\(\)/);
+ assert.match(html,/checks\.includes\('unknown'\)/);
+ assert.match(html,/checks\.includes\('no'\)/);
+ assert.match(html,/a\.score<70/);
+ assert.match(html,/if\(!a\.preflight\.ok\)/);
+ assert.match(html,/['"]capabilityGate['"],['"]deadlineGate['"],['"]requirementsGate['"]/);
+});
+
+test('Task Workbench requires preflight and a minimum score before creating an offer draft', async () => {
+ const html=await source('workbench.html');
+ const start=html.indexOf('function draftText()');
+ const end=html.indexOf('\nfunction saveDraft()',start);
+ assert.ok(start>=0&&end>start);
+ const draft=html.slice(start,end);
+ assert.match(draft,/!a\.preflight\.ok/);
+ assert.match(draft,/a\.score<70/);
+ assert.match(html,/Ovlašćena potrošnja: 0 EUR/);
+ assert.match(html,/slanje je ručno van ove aplikacije/);
+});
