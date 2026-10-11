@@ -326,3 +326,35 @@ test('portable marketing skill packs preserve zero-cost, evidence and no-externa
   assert.match(readme, /0 EUR/);
   assert.match(license, /MIT License/);
 });
+
+test('SEO Evidence Audit report ranks actionable findings and keeps evidence scope explicit', async () => {
+  const html = await source('execution-lab.html');
+  assert.match(html, /function formatSeoAudit\(data,title='SEO provera'\)/);
+  assert.match(html, /const actionable=findings\.filter\(f=>f\.status==='FAIL'\|\|f\.status==='WARN'\)/);
+  assert.match(html, /## Prioritetni sledeći koraci/);
+  assert.match(html, /## Nalazi zasnovani na preuzetom HTML-u/);
+  assert.match(html, /## Ograničenja/);
+  assert.match(html, /Nije poslato klijentu/);
+  assert.match(html, /artifact=formatSeoAudit\(data,\$\('title'\)\.value\.trim\(\)\|\|'SEO provera'\)/);
+  const start=html.indexOf('function formatSeoAudit('),end=html.indexOf("\n$('audit').addEventListener",start);
+  assert.ok(start>=0&&end>start);
+  const context={};
+  vm.createContext(context);
+  vm.runInContext(html.slice(start,end)+'\nglobalThis.formatSeoAudit=formatSeoAudit;',context);
+  const result=context.formatSeoAudit({
+    checkedAt:'2026-10-11T10:00:00.000Z',requestedUrl:'https://example.test/',finalUrl:'https://example.test/',
+    httpStatus:200,contentType:'text/html',htmlCharacters:2000,
+    auditScope:{evidenceSource:'initial_html',javascriptExecuted:false,renderedDomChecked:false},
+    summary:{pass:1,warn:1,fail:1,notChecked:1,highPriority:1,mediumPriority:1,reviewPriority:1},
+    findings:[
+      {status:'PASS',priority:'INFO',label:'HTTP',evidence:'HTTP 200',recommendation:'Pregledaj sadržaj.'},
+      {status:'WARN',priority:'MEDIUM',label:'Meta opis',evidence:'Nedostaje',recommendation:'Dodaj relevantan opis.'},
+      {status:'FAIL',priority:'HIGH',label:'Robots',evidence:'noindex',recommendation:'Potvrdi da li je nameran.'}
+    ],
+    limitations:['JavaScript nije izvršen.']
+  });
+  assert.ok(result.indexOf('Robots')<result.indexOf('Meta opis'),'high-priority findings should appear first');
+  assert.match(result,/## Prioritetni sledeći koraci/);
+  assert.match(result,/JavaScript nije izvršen/);
+  assert.match(result,/Nije poslato klijentu/);
+});
