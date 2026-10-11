@@ -62,42 +62,13 @@ function normalizeUrl(value){try{const u=new URL(value);if(!['http:','https:'].i
 function terms(inputId='jobKeywords'){return $(inputId).value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean)}
 function plainText(value){const box=document.createElement('textarea');box.innerHTML=String(value??'').replace(/<[^>]*>/g,' ');return (box.value||'').replace(/\s+/g,' ').trim()}
 function scoreText(text,remote,inputId='jobKeywords',titleText=''){
- const hay=plainText(text).toLowerCase().replace(/[^\\p{L}\\p{N}+#. -]/gu,' ');
- const title=plainText(titleText).toLowerCase().replace(/[^\\p{L}\\p{N}+#. -]/gu,' ');
- const keys=[...new Set(terms(inputId).filter(k=>k.length>1))];
- const aliases={
-  'ai':['ai','artificial intelligence','machine learning','generative ai','large language model','llm'],
-  'automation':['automation','automate','automated','workflow automation','process automation','orchestration'],
-  'web application':['web application','web applications','web app','web apps','full-stack','full stack','frontend','front-end','back-end','backend'],
-  'seo':['seo','search engine optimization','search optimisation','search optimization'],
-  'market research':['market research','market analysis','competitive research']
- };
- const matches=(source,term)=>{
-  const variants=aliases[term]||[term];
-  return variants.some(v=>{
-   const escaped=v.replace(/[.*+?^${}()|[\]\\]/g,'\\function scoreText(text,remote,inputId='jobKeywords',titleText=''){
- const hay=plainText(text).toLowerCase();
- const title=plainText(titleText).toLowerCase();
- const keys=[...new Set(terms(inputId).filter(k=>k.length>1))];
+ const normalize=s=>' '+plainText(s).toLowerCase().replace(/[^a-z0-9+#]+/g,' ').trim().replace(/\s+/g,' ')+' ';
+ const hay=normalize(text),title=normalize(titleText);
+ const keys=[...new Set(terms(inputId).map(k=>k.toLowerCase()).filter(k=>k.length>1))];
+ const aliases={'ai':['ai','artificial intelligence','machine learning','generative ai','large language model','llm'],'automation':['automation','automate','automated','workflow automation','process automation','orchestration'],'web application':['web application','web applications','web app','web apps','full stack','frontend','front end','back end','backend'],'seo':['seo','search engine optimization','search optimisation','search optimization'],'market research':['market research','market analysis','competitive research']};
+ const matches=(source,term)=>(aliases[term]||[term]).some(v=>source.includes(normalize(v)));
  let score=0;const hits=[];
- for(const key of keys){
-  const inTitle=title.includes(key),inBody=hay.includes(key);
-  if(inTitle||inBody){score+=inTitle?(key==='ai'?14:key.length>=8?16:12):(key==='ai'?1:key.length>=8?4:3);hits.push(key)}
- }
- if(remote)score+=3;
- return {score:Math.min(100,score),hits:hits.slice(0,8)};
-}').replace(/\\s+/g,'\\s+');
-   return new RegExp('(^|[^\\p{L}\\p{N}])'+escaped+'($|[^\\p{L}\\p{N}])','iu').test(source);
-  });
- };
- let score=0;const hits=[];
- for(const key of keys){
-  const inTitle=matches(title,key),inBody=matches(hay,key);
-  if(inTitle||inBody){
-   score+=inTitle?({ai:22,automation:20,'web application':24,seo:22,'market research':20}[key]||18):(key==='ai'?2: key.length>=8?5:3);
-   hits.push(key);
-  }
- }
+ for(const key of keys){const inTitle=matches(title,key),inBody=matches(hay,key);if(inTitle||inBody){score+=inTitle?({ai:22,automation:20,'web application':24,seo:22,'market research':20}[key]||18):(key==='ai'?2:key.length>=8?5:3);hits.push(key)}}
  if(remote)score+=3;
  return {score:Math.min(100,score),hits:hits.slice(0,8)};
 }
