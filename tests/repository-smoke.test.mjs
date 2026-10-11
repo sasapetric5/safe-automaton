@@ -138,3 +138,29 @@ test('Opportunity Hunter keeps country restrictions and does not equate Remote w
  assert.match(context.geoAssessment({kind:'job',source:'Arbeitnow',location:'United Kingdom (Remote)'}).scope,/United Kingdom|zemlje/);
  assert.match(context.geoAssessment({kind:'job',source:'Arbeitnow',location:'Remote'}).scope,/dozvoljene zemlje nisu navedene/);
 });
+
+test('EU Funding & Tenders request uses JSON multipart parts and normalized keyword phrases', async () => {
+ const html=await source('opportunities.html');
+ assert.match(html,/const searchText=q\.split\(\/[\^]*[,;]/);
+ assert.match(html,/form\.append\('query',new Blob\(\[JSON\.stringify\(/);
+ assert.match(html,/form\.append\('languages',new Blob\(\[JSON\.stringify\(\['en'\]\)/);
+ assert.match(html,/form\.append\('displayLanguage','en'\)/);
+ assert.match(html,/setStatus\('euGrantStatus'/);
+ assert.match(html,/setStatus\('usGrantStatus'/);
+ assert.match(html,/id="euGrantStatus"/);
+ assert.match(html,/id="usGrantStatus"/);
+});
+test('EU grant keywords score independently instead of becoming one space-separated phrase', async () => {
+ const html=await source('opportunities.html');
+ const start=html.indexOf('function scoreText('),end=html.indexOf('\\nfunction canonical(',start);
+ assert.ok(start>=0&&end>start);
+ const context={
+  terms:id=>id==='grantKeywords'?['artificial intelligence','automation','digital']:['ai','automation','web application','seo','market research'],
+  plainText:value=>String(value??'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/\\s+/g,' ').trim()
+ };
+ vm.createContext(context);
+ vm.runInContext(html.slice(start,end)+'\\nglobalThis.scoreText=scoreText;',context);
+ const scored=context.scoreText('Artificial Intelligence and Cybersecurity Education Innovation',false,'grantKeywords','Artificial Intelligence and Cybersecurity Education Innovation');
+ assert.ok(scored.score>0);
+ assert.ok(scored.hits.includes('artificial intelligence'));
+});
