@@ -61,13 +61,23 @@ export async function onRequest(context) {
       httpStatus: response.status,
       contentType,
       htmlCharacters: html.length,
+      auditScope: {
+        evidenceSource: "initial_html",
+        javascriptExecuted: false,
+        renderedDomChecked: false,
+        linkedPagesCrawled: false,
+        note: "Nalazi opisuju preuzeti početni HTML, ne nužno konačan prikaz stranice u pregledaču."
+      },
       findings: audit.findings,
       summary: {
         total: audit.findings.length,
         pass: audit.findings.filter(x => x.status === "PASS").length,
         warn: audit.findings.filter(x => x.status === "WARN").length,
         fail: audit.findings.filter(x => x.status === "FAIL").length,
-        notChecked: audit.findings.filter(x => x.status === "NOT_CHECKED").length
+        notChecked: audit.findings.filter(x => x.status === "NOT_CHECKED").length,
+        highPriority: audit.findings.filter(x => x.priority === "HIGH").length,
+        mediumPriority: audit.findings.filter(x => x.priority === "MEDIUM").length,
+        reviewPriority: audit.findings.filter(x => x.priority === "REVIEW").length
       },
       limitations: [
         "Proverena je samo HTML odgovora; JavaScript-renderovani sadržaj nije izvršen.",
@@ -170,7 +180,21 @@ function inspectHtml(html, finalUrl, response) {
   const noindex = /\bnoindex\b/i.test(robots + " " + xRobots);
   const final = new URL(finalUrl);
   const findings = [];
-  const add = (id, label, status, evidence, recommendation) => findings.push({ id, label, status, evidence, recommendation });
+  const add = (id, label, status, evidence, recommendation) => {
+    const confidence = status === "NOT_CHECKED" ? "NOT_CHECKED"
+      : id === "h1" ? "LIMITED"
+      : ["title", "description", "structured-data"].includes(id) ? "HEURISTIC"
+      : "DIRECT";
+    const priority = status === "FAIL" ? "HIGH"
+      : status === "WARN" ? "MEDIUM"
+      : status === "NOT_CHECKED" ? "REVIEW"
+      : "INFO";
+    findings.push({
+      id, label, status, priority, confidence,
+      evidenceSource: "initial_html",
+      evidence, recommendation
+    });
+  };
 
   add("http", "HTTP odgovor", response.status >= 200 && response.status < 300 ? "PASS" : "FAIL", "HTTP " + response.status, response.status >= 200 && response.status < 300 ? "Proveri i sadržaj stranice; HTTP 2xx sam po sebi ne potvrđuje SEO kvalitet." : "Istraži statusni kod i potvrdi da URL vraća očekivanu stranicu.");
   add("title", "HTML title", title ? (title.length >= 20 && title.length <= 70 ? "PASS" : "WARN") : "FAIL", title ? title.slice(0, 220) + " (dužina: " + title.length + ")" : "Nije pronađen <title> element.", title ? "Potvrdi da naslov jedinstveno i tačno opisuje sadržaj." : "Dodaj smislen title element.");
