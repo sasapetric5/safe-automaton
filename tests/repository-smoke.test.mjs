@@ -355,6 +355,9 @@ test('SEO Evidence Audit report ranks actionable findings and keeps evidence sco
   });
   assert.ok(result.indexOf('Robots')<result.indexOf('Meta opis'),'high-priority findings should appear first');
   assert.match(result,/## Prioritetni sledeći koraci/);
+  assert.match(result,/## Plan popravki i provera uspeha/);
+  assert.match(result,/Proveri da je opis jedinstven/);
+  assert.match(result,/Napomena za Savremeni Koreni/);
   assert.match(result,/JavaScript nije izvršen/);
   assert.match(result,/Nije poslato klijentu/);
 });
