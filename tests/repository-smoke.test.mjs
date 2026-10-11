@@ -389,3 +389,34 @@ test('SEO audit endpoint returns evidence scope and findings for allowed HTML wi
   assert.ok(data.findings.some(f=>f.id==='images'));
   assert.ok(data.limitations.some(s=>s.includes('JavaScript-renderovani sadržaj')));
 });
+
+test('Execution Lab selects a task-specific skill procedure and QA checklist without claiming autonomous execution', async () => {
+  const html = await source('execution-lab.html');
+  assert.match(html, /const procedures=\{/);
+  for (const key of ['seo','research','qa','scope']) assert.match(html,new RegExp('^\\s*'+key+':\\{name:', 'm'));
+  assert.match(html,/function renderProcedure\(\)/);
+  assert.match(html,/Otvori instrukcije/);
+  assert.match(html,/Ovo je lokalna kontrolna lista; ne pokreće AI model/);
+  assert.match(html,/renderProcedure\(\);qa\(\)/);
+  const start=html.indexOf('const procedures={'),end=html.indexOf('\nfunction qa()',start);
+  assert.ok(start>=0&&end>start);
+  const context={esc:value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))};
+  const elements={
+    taskType:{value:'seo'},
+    skillInfo:{innerHTML:''},
+    qaChecks:{innerHTML:''},
+    qaStatus:{innerHTML:''}
+  };
+  context.$=id=>elements[id];
+  context.getChecks=()=>[];
+  context.qa=()=>{};
+  vm.createContext(context);
+  vm.runInContext(html.slice(start,end)+'\nglobalThis.procedures=procedures;globalThis.renderProcedure=renderProcedure;',context);
+  for (const key of ['seo','research','qa','scope']) {
+    elements.taskType.value=key;
+    context.renderProcedure();
+    assert.ok(elements.skillInfo.innerHTML.includes(context.procedures[key].name));
+    assert.ok(elements.qaChecks.innerHTML.includes('checkbox'));
+    assert.ok(elements.qaChecks.innerHTML.includes(context.procedures[key].checks[0][0]));
+  }
+});
