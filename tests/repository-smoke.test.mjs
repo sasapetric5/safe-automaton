@@ -141,7 +141,7 @@ test('Opportunity Hunter keeps country restrictions and does not equate Remote w
 
 test('EU Funding & Tenders request uses JSON multipart parts and normalized keyword phrases', async () => {
  const html=await source('opportunities.html');
- assert.match(html,/const searchText=q\.split\(\/[\^]*[,;]/);
+ assert.ok(html.includes('const searchText=q.split(/[,;]+/)'));
  assert.match(html,/form\.append\('query',new Blob\(\[JSON\.stringify\(/);
  assert.match(html,/form\.append\('languages',new Blob\(\[JSON\.stringify\(\['en'\]\)/);
  assert.match(html,/form\.append\('displayLanguage','en'\)/);
