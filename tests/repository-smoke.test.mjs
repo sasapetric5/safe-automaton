@@ -69,6 +69,41 @@ test('Grants.gov endpoint validates method/input and does not log request body o
   assert.match(code, /upstream_unexpected_payload/);
 });
 
+
+test('Opportunity Hunter scoring prioritizes title matches and does not reward incidental body mentions', async () => {
+  const html = await source('opportunities.html');
+  const start = html.indexOf('function scoreText(');
+  const end = html.indexOf('\nfunction canonical(', start);
+  assert.ok(start >= 0 && end > start, 'scoreText function should be present');
+  const functionSource = html.slice(start, end) + '\nglobalThis.scoreText = scoreText;';
+  const context = {
+    document: { createElement: () => ({ _html: '', set innerHTML(v) { this._html = v.replace(/<[^>]*>/g, ' '); }, get value() { return this._html; } }) },
+    terms: () => ['ai', 'automation', 'web application'],
+    plainText: value => String(value ?? '').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()
+  };
+  vm.createContext(context);
+  vm.runInContext(functionSource, context);
+  const relevant = context.scoreText('Role involves building web applications', true, 'jobKeywords', 'Senior Web Application Developer');
+  const incidental = context.scoreText('AI automation mentioned once in a generic company description', true, 'jobKeywords', 'Enterprise Account Executive');
+  assert.ok(relevant.score > incidental.score, 'title-relevant job should outrank incidental keyword matches');
+  assert.ok(relevant.hits.includes('web application'));
+});
+
+test('Opportunity Hunter geography distinguishes Europe, Americas, global and US federal grants', async () => {
+  const html = await source('opportunities.html');
+  const start = html.indexOf('function geoAssessment(');
+  const end = html.indexOf('\nfunction saveOpportunity(', start);
+  assert.ok(start >= 0 && end > start, 'geoAssessment function should be present');
+  const functionSource = html.slice(start, end) + '\nglobalThis.geoAssessment = geoAssessment;';
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(functionSource, context);
+  assert.match(context.geoAssessment({kind:'job', source:'Remotive (javni API)', location:'Europe, USA, Canada, APAC'}).scope, /Više regiona/);
+  assert.match(context.geoAssessment({kind:'job', source:'Remotive (javni API)', location:'Worldwide'}).scope, /Globalni/);
+  assert.match(context.geoAssessment({kind:'job', source:'Arbeitnow (javni API)', location:'Remote Deutschland'}).scope, /Evropa/);
+  assert.match(context.geoAssessment({kind:'grant', source:'Grants.gov (zvanični javni API)', location:'Sjedinjene Američke Države'}).scope, /SAD — federalni poziv/);
+});
+
 test('notification UI does not claim server push is already connected', async () => {
   const html = await source('index.html');
   const worker = await source('sw.js');
