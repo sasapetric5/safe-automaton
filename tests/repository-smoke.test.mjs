@@ -114,31 +114,27 @@ test('notification UI does not claim server push is already connected', async ()
 });
 
 
-test('Opportunity Hunter uses word-boundary keyword matching and title relevance aliases', async () => {
- const html = await source('opportunities.html');
- const start = html.indexOf('function scoreText('), end = html.indexOf('\\nfunction canonical(', start);
- assert.ok(start >= 0 && end > start);
- const functionSource = html.slice(start, end) + '\\nglobalThis.scoreText = scoreText;';
- const context = {
-  document: { createElement: () => ({ _html:'', set innerHTML(v){this._html=v.replace(/<[^>]*>/g,' ');}, get value(){return this._html.replace(/&amp;/g,'&');} }) },
-  terms: () => ['AI','automation','web application','SEO','market research'],
-  plainText: value => String(value??'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/\\s+/g,' ').trim()
- };
- vm.createContext(context); vm.runInContext(functionSource,context);
- const react=context.scoreText('General product description',true,'jobKeywords','Senior React Full-stack Developer');
- const incidental=context.scoreText('The company has paid its invoices and mentions AI automation generally',true,'jobKeywords','Enterprise Account Executive');
- assert.ok(react.score>incidental.score,'full-stack title should beat incidental body mentions');
- assert.ok(react.hits.includes('web application'));
- assert.ok(!incidental.hits.includes('AI'),'AI must not match inside the word paid');
-});
 
-test('Opportunity Hunter preserves country-level remote restrictions instead of inferring worldwide access', async () => {
- const html = await source('opportunities.html');
- const start=html.indexOf('function geoAssessment('),end=html.indexOf('\\nfunction saveOpportunity(',start);
+test('Opportunity Hunter scoring prioritizes title relevance and keyword boundaries', async () => {
+ const html=await source('opportunities.html');
+ const start=html.indexOf('function scoreText('),end=html.indexOf('\nfunction canonical(',start);
+ assert.ok(start>=0&&end>start);
+ const context={terms:()=>['ai','automation','web application','seo','market research'],plainText:value=>String(value??'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim()};
+ vm.createContext(context);
+ vm.runInContext(html.slice(start,end)+'\nglobalThis.scoreText=scoreText;',context);
+ const relevant=context.scoreText('Generic description',true,'jobKeywords','Senior React Full-stack Developer');
+ const incidental=context.scoreText('Paid invoices; AI and automation mentioned incidentally',true,'jobKeywords','Enterprise Account Executive');
+ assert.ok(relevant.score>incidental.score);
+ assert.ok(relevant.hits.includes('web application'));
+ assert.ok(!incidental.hits.includes('ai'));
+});
+test('Opportunity Hunter keeps country restrictions and does not equate Remote with worldwide', async () => {
+ const html=await source('opportunities.html');
+ const start=html.indexOf('function geoAssessment('),end=html.indexOf('\nfunction saveOpportunity(',start);
  assert.ok(start>=0&&end>start);
  const context={};vm.createContext(context);
- vm.runInContext(html.slice(start,end)+'\\nglobalThis.geoAssessment=geoAssessment;',context);
- assert.match(context.geoAssessment({kind:'job',source:'Arbeitnow (javni API)',location:'Remote Deutschland'}).scope,/Germany|Nemačka|zemlje/);
- assert.match(context.geoAssessment({kind:'job',source:'Arbeitnow (javni API)',location:'United Kingdom (Remote)'}).scope,/United Kingdom|Ujedinjeno Kraljevstvo|zemlje/);
- assert.match(context.geoAssessment({kind:'job',source:'Arbeitnow (javni API)',location:'Remote'}).scope,/dozvoljene zemlje nisu navedene/);
+ vm.runInContext(html.slice(start,end)+'\nglobalThis.geoAssessment=geoAssessment;',context);
+ assert.match(context.geoAssessment({kind:'job',source:'Arbeitnow',location:'Remote Deutschland'}).scope,/Germany|zemlje/);
+ assert.match(context.geoAssessment({kind:'job',source:'Arbeitnow',location:'United Kingdom (Remote)'}).scope,/United Kingdom|zemlje/);
+ assert.match(context.geoAssessment({kind:'job',source:'Arbeitnow',location:'Remote'}).scope,/dozvoljene zemlje nisu navedene/);
 });
