@@ -59,12 +59,27 @@ export async function onRequest(context) {
   // Cloudflare dashboard values are strings; tolerate accidental whitespace/case differences.
   const aiEnabledNormalized = typeof aiEnabled === "string" ? aiEnabled.trim().toLowerCase() : aiEnabled;
   if (aiEnabledNormalized !== "true" && aiEnabledNormalized !== true) {
+    const tokenBinding = context.env?.SAFE_AUTOMATON_AI_TOKEN;
     return json({
-      error: "AI izvršavanje je isključeno u ovom izvršavanju.",
-      detail: 'Cloudflare Pages Functions trenutno ne vidi SAFE_AUTOMATON_AI_ENABLED kao tačan tekst "true". Ovo je problem konfiguracije okruženja, pre provere tokena i bindinga; model nije pozvan. Proveri da li je promenljiva podešena za Preview okruženje aktivnog branch deployment-a, a ne samo za Production.',
-      diagnosticCode: "AI_ENABLE_FLAG_NOT_TRUE",
+      error: "AI izvršavanje nije omogućeno u ovom runtime okruženju.",
+      detail: aiEnabled === undefined
+        ? "Runtime nije dobio SAFE_AUTOMATON_AI_ENABLED. Ovo je dokaz o dostupnosti promenljive u ovom izvršavanju, ne dokaz da je vrednost pogrešno uneta u kontrolnoj tabli. Zahtev je zaustavljen pre provere tokena i AI bindinga; model nije pozvan."
+        : 'Runtime je dobio SAFE_AUTOMATON_AI_ENABLED, ali njegova vrednost ne aktivira AI. Vrednost nije prikazana radi bezbednosti; model nije pozvan.',
+      diagnosticCode: aiEnabled === undefined ? "AI_ENABLE_FLAG_MISSING_AT_RUNTIME" : "AI_ENABLE_FLAG_NOT_TRUE",
       runtimeHost: new URL(request.url).hostname,
-      observedEnableFlag: aiEnabled === undefined ? "missing" : typeof aiEnabled,
+      observedEnableFlag: aiEnabled === undefined
+        ? "missing"
+        : typeof aiEnabled === "string"
+          ? (aiEnabledNormalized === "true" ? "string_true" : "string_other")
+          : typeof aiEnabled === "boolean" && aiEnabled
+            ? "boolean_true"
+            : "other_type",
+      runtimeBindings: {
+        envObjectPresent: context.env != null,
+        enableFlagPresent: aiEnabled !== undefined,
+        tokenBindingPresent: typeof tokenBinding === "string" && tokenBinding.length > 0,
+        aiBindingPresent: Boolean(context.env?.AI && typeof context.env.AI.run === "function")
+      },
       normalizedFlagAccepted: false,
       engine: "workers-ai",
       enabled: false,
