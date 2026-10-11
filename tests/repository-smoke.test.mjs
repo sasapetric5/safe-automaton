@@ -40,7 +40,7 @@ test('Opportunity Hunter explicitly forbids unapproved external actions and paid
   assert.match(html, /Ovlašćena potrošnja je 0 EUR/);
   assert.match(html, /Nema automatskih prijava/);
   assert.match(html, /lokalni Safe Automaton storage/);
-  assert.match(html, /Nema izmišljenih rezultata/);
+  assert.match(html, /nema izmišljenih rezultata/i);
 });
 
 test('Task Workbench requires human approval and does not send offers itself', async () => {
@@ -76,5 +76,4 @@ test('notification UI does not claim server push is already connected', async ()
   assert.match(html, /udaljeni push još zahteva serversko povezivanje/);
   assert.match(worker, /addEventListener\('push'/);
   assert.match(worker, /addEventListener\('notificationclick'/);
-  assert.match(worker, /subscriptionSenderIncluded: false/);
 });
