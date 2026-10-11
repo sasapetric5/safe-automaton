@@ -74,6 +74,6 @@ test('notification UI does not claim server push is already connected', async ()
   const worker = await source('sw.js');
   assert.match(html, /server za udaljeni push još nije povezan/);
   assert.match(html, /udaljeni push još zahteva serversko povezivanje/);
-  assert.match(worker, /addEventListener\('push'/);
-  assert.match(worker, /addEventListener\('notificationclick'/);
+  assert.match(worker, /addEventListener\(["']push["']/);
+  assert.match(worker, /addEventListener\(["']notificationclick["']/);
 });
