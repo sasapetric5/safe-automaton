@@ -1,6 +1,12 @@
 const UPSTREAM = "https://api.grants.gov/v1/api/search2";
 
-export async function onRequestPost(context) {
+export async function onRequest(context) {
+  if (context.request.method !== "POST") {
+    return json({ error: "Koristi POST za pretragu Grants.gov." }, 405, {
+      Allow: "POST"
+    });
+  }
+
   let input;
   try {
     input = await context.request.json();
@@ -8,9 +14,9 @@ export async function onRequestPost(context) {
     return json({ error: "Neispravno JSON telo zahteva." }, 400);
   }
 
-  const keyword = typeof input.keyword === "string" ? input.keyword.trim().slice(0, 200) : "";
-  const rows = Number.isInteger(input.rows) ? Math.min(50, Math.max(1, input.rows)) : 20;
-  const startRecordNum = Number.isInteger(input.startRecordNum)
+  const keyword = typeof input?.keyword === "string" ? input.keyword.trim().slice(0, 200) : "";
+  const rows = Number.isInteger(input?.rows) ? Math.min(50, Math.max(1, input.rows)) : 20;
+  const startRecordNum = Number.isInteger(input?.startRecordNum)
     ? Math.min(10000, Math.max(0, input.startRecordNum))
     : 0;
 
@@ -28,8 +34,7 @@ export async function onRequestPost(context) {
         "Content-Type": "application/json",
         "Accept": "application/json"
       },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(20000)
+      body: JSON.stringify(payload)
     });
 
     const body = await upstream.text();
@@ -53,25 +58,13 @@ export async function onRequestPost(context) {
       }, 502);
     }
 
-    return json(data, 200, {
-      "Cache-Control": "no-store"
-    });
+    return json(data, 200);
   } catch (error) {
     return json({
-      error: error?.name === "TimeoutError"
-        ? "Isteklo je vreme čekanja na Grants.gov API."
-        : "Nije moguće povezivanje sa Grants.gov API-jem."
+      error: "Greška pri povezivanju sa Grants.gov API-jem.",
+      detail: error instanceof Error ? error.message.slice(0, 240) : "Nepoznata greška"
     }, 502);
   }
-}
-
-export async function onRequest(context) {
-  if (context.request.method !== "POST") {
-    return json({ error: "Koristi POST za pretragu Grants.gov." }, 405, {
-      "Allow": "POST"
-    });
-  }
-  return onRequestPost(context);
 }
 
 function json(data, status = 200, extraHeaders = {}) {
