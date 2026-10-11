@@ -1,0 +1,25 @@
+name: Repository smoke checks
+
+on:
+  push:
+    branches:
+      - phase-0-1-safe-research-foundation
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run repository smoke tests
+        run: node --test tests/repository-smoke.test.mjs
