@@ -56,13 +56,16 @@ export async function onRequest(context) {
 
   // Fail closed. Diagnose the exact failing condition without exposing secret values.
   const aiEnabled = context.env?.SAFE_AUTOMATON_AI_ENABLED;
-  if (aiEnabled !== "true") {
+  // Cloudflare dashboard values are strings; tolerate accidental whitespace/case differences.
+  const aiEnabledNormalized = typeof aiEnabled === "string" ? aiEnabled.trim().toLowerCase() : aiEnabled;
+  if (aiEnabledNormalized !== "true" && aiEnabledNormalized !== true) {
     return json({
       error: "AI izvršavanje je isključeno u ovom izvršavanju.",
       detail: 'Cloudflare Pages Functions trenutno ne vidi SAFE_AUTOMATON_AI_ENABLED kao tačan tekst "true". Ovo je problem konfiguracije okruženja, pre provere tokena i bindinga; model nije pozvan. Proveri da li je promenljiva podešena za Preview okruženje aktivnog branch deployment-a, a ne samo za Production.',
       diagnosticCode: "AI_ENABLE_FLAG_NOT_TRUE",
       runtimeHost: new URL(request.url).hostname,
       observedEnableFlag: aiEnabled === undefined ? "missing" : typeof aiEnabled,
+      normalizedFlagAccepted: false,
       engine: "workers-ai",
       enabled: false,
       modelInvoked: false
