@@ -189,6 +189,8 @@ test('expired grant deadlines are visibly classified as historical and sort behi
  const now=Date.parse('2026-10-11T12:00:00Z');
  assert.match(context.opportunityStatus({deadline:'2026-03-20'},now).label,/ROK ISTEKAO/);
  assert.equal(context.opportunityStatus({deadline:'2026-11-18'},now).expired,false);
+ const sameDay=context.opportunityStatus({deadline:'2026-10-11'},Date.parse('2026-10-11T12:00:00Z'));
+ assert.equal(sameDay.expired,false,'a date-only deadline remains open through the end of that date');
  assert.equal(context.opportunityStatus({deadline:''},now).expired,false);
 });
 
