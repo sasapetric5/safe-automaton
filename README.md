@@ -7,6 +7,7 @@ Razvojni prototip za istraživanje javnih poslovnih prilika, procenu izvodljivos
 - `index.html` — kontrolna tabla, lokalna evidencija i budžetski limit.
 - `opportunities.html` — ručno pokretana pretraga javnih izvora poslova i poziva.
 - `workbench.html` — procena isplativosti, radni zadaci, nacrti ponuda, ručno odobravanje i praćenje isporuke/naplate.
+- `execution-lab.html` — kontrolisani lokalni šabloni za izradu radnih artefakata, ručni QA, čuvanje i izvoz Markdown/JSON rezultata; nije povezan sa AI modelom i ne izvršava proizvoljan kod.
 
 ## Obavezna pravila
 
