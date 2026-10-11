@@ -18,7 +18,7 @@
 <label for="title">Naziv zadatka *</label><input id="title" maxlength="180" required placeholder="Npr. Provera produktne stranice">
 <label for="brief">Zahtev klijenta / brief *</label><textarea id="brief" maxlength="5000" required placeholder="Nalepi zahtev ili opiši željeni rezultat. Ne unosi lozinke, API ključeve ili lične podatke."></textarea>
 <div class="formrow"><div><label for="source">Javni izvor / URL (opciono)</label><input id="source" type="url" maxlength="1000" placeholder="https://..."></div><div><label for="deadline">Interni rok (opciono)</label><input id="deadline" type="date"></div></div>
-<label for="facts">Proverene činjenice / ograničenja</label><textarea id="facts" maxlength="4000" placeholder="Šta je zaista provereno? Šta nije poznato? Koje tehnologije ili uslovi su obavezni?"></textarea>
+<label for="facts">Proverene činjenice / ograničenja</label><textarea id="facts" maxlength="4000" placeholder="Šta je zaista provereno? Šta nije poznato? Koje tehnologije ili uslovi su obavezni?"></textarea>\n<label for="aiToken">AI pristupni token (nije sačuvan)</label><input id="aiToken" type="password" autocomplete="off" maxlength="256" placeholder="Unesi Cloudflare tajnu SAFE_AUTOMATON_AI_TOKEN"><p class="small">Token se šalje samo ovom endpoint-u i ne čuva se u localStorage niti u radnom rezultatu. Ne stavljaj token u brief ili činjenice.</p>
 <div class="row" style="margin-top:12px"><button class="primary" id="build">Izradi lokalni šablon</button><button id="aiDraft">Izradi AI nacrt (opciono)</button><button id="audit">Pokreni stvarnu SEO proveru</button><button id="reset">Očisti formu</button></div><div id="auditStatus" class="small" aria-live="polite">AI je podrazumevano isključen. Poziv radi samo kada je eksplicitno omogućen na Cloudflare-u; pre toga potvrdi besplatni plan i kvotu.</div>
 </section>
 <section class="card span6"><h2>2. Kontrola kvaliteta</h2><p class="small">Označi samo provere koje si stvarno izvršio. Ove kućice nisu automatski dokazi da je rezultat ispravan.</p>
@@ -124,10 +124,10 @@ $('aiDraft').addEventListener('click',async()=>{
   const title=$('title').value.trim();
   const brief=$('brief').value.trim();
   if(!title||!brief){$('auditStatus').textContent='Unesi naslov i brief pre izrade AI nacrta.';return;}
-  const evidence=($('facts').value.trim()||artifact).slice(0,4000);
+  const evidence=($('facts').value.trim()||artifact).slice(0,4000);\n  const aiToken=$('aiToken').value.trim();\n  if(aiToken.length<32){$('auditStatus').textContent='Unesi AI pristupni token (najmanje 32 znaka); token nije sačuvan.';return;}
   $('aiDraft').disabled=true;$('auditStatus').textContent='Proveravam da li je AI eksplicitno omogućen…';
   try{
-    const response=await fetch('/api/ai-task',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({taskType,title,brief,evidence})});
+    const response=await fetch('/api/ai-task',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
     const data=await response.json();
     if(!response.ok||!data.ok)throw new Error(data.detail||data.error||'AI nacrt nije uspeo.');
     artifact='# AI RADNI NACRT — '+title+'\n\n'+data.draft+'\n\n---\nStatus: '+data.status+'\nModel: '+data.model+'\nVreme: '+data.generatedAt+'\nProvera: '+data.disclaimer+'\nPoslato klijentu: ne. Spoljne radnje: nijedna.';
@@ -140,7 +140,7 @@ $('aiDraft').addEventListener('click',async()=>{
     $('auditStatus').textContent='AI nacrt nije napravljen: '+(error instanceof Error?error.message:'nepoznata greška')+'. Ako je AI isključen ili binding nije podešen, nije pozvan model.';
   }finally{$('aiDraft').disabled=false;}
 });
-$('reset').addEventListener('click',()=>{['title','brief','source','deadline','facts'].forEach(id=>$(id).value='');artifact='';activeRecordId=null;$('output').textContent='Forma je očišćena.';$('copy').disabled=$('download').disabled=$('save').disabled=true;getChecks().forEach(x=>x.checked=false);qa()});
+$('reset').addEventListener('click',()=>{['title','brief','source','deadline','facts','aiToken'].forEach(id=>$(id).value='');artifact='';activeRecordId=null;$('output').textContent='Forma je očišćena.';$('copy').disabled=$('download').disabled=$('save').disabled=true;getChecks().forEach(x=>x.checked=false);qa()});
 getChecks().forEach(x=>x.addEventListener('change',qa));
 $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(artifact);$('saved').textContent='Rezultat kopiran.'}catch{$('saved').textContent='Kopiranje nije dozvoljeno u ovom kontekstu; koristi izvoz Markdown.'}});
 $('download').addEventListener('click',()=>{if(artifact)blobDownload('safe-automaton-radni-rezultat.md',artifact,'text/markdown;charset=utf-8')});
