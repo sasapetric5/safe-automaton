@@ -229,3 +229,15 @@ test('expired opportunities are hidden by default while unknown deadlines remain
  assert.match(html,/list=visibleOpportunities\(list,\$\('showExpired'\)\.checked\)/);
 });
 
+
+test('forecasted grants are clearly marked as not confirmed open, and grant numbers do not influence relevance', async () => {
+ const html=await source('opportunities.html');
+ const start=html.indexOf('function opportunityStatus('),end=html.indexOf('\nfunction deadlineState(',start);
+ assert.ok(start>=0&&end>start);
+ const context={Date};vm.createContext(context);
+ vm.runInContext(html.slice(start,end)+'\nglobalThis.opportunityStatus=opportunityStatus;',context);
+ assert.match(context.opportunityStatus({sourceStatus:'forecasted',deadline:''}).label,/nije potvrđeno da je otvoren/i);
+ assert.match(html,/scoreText\(\[title,agencyName,sourceSummary\]\.join\(' '\)/);
+ assert.match(html,/sourceStatus:String\(get\('status','statusLabel','callStatus'\)\|\|''\)/);
+});
+
