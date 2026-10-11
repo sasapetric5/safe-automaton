@@ -14,7 +14,7 @@ async function source(relativePath) {
 test('all existing HTML inline scripts parse without syntax errors', async () => {
   for (const file of ['index.html', 'opportunities.html', 'workbench.html', 'execution-lab.html', 'grants-diagnostic.html']) {
     const html = await source(file);
-    const scripts = [...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(match => match[1]).filter(script => script.trim());
+    const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]).filter(script => script.trim());
     assert.ok(scripts.length > 0, `${file} should contain inline JavaScript`);
     scripts.forEach((script, index) => {
       assert.doesNotThrow(() => new vm.Script(script, { filename: `${file} inline script ${index + 1}` }));
