@@ -217,15 +217,15 @@ test('Grants.gov excludes zero-relevance records and reports the filtered count'
 
 test('expired opportunities are hidden by default while unknown deadlines remain visible and history is opt-in', async () => {
  const html=await source('opportunities.html');
- const start=html.indexOf('function opportunityStatus('),end=html.indexOf('\\nfunction deadlineState(',start);
+ const start=html.indexOf('function opportunityStatus('),end=html.indexOf('\nfunction deadlineState(',start);
  assert.ok(start>=0&&end>start);
  const context={Date};vm.createContext(context);
- vm.runInContext(html.slice(start,end)+'\\nglobalThis.visibleOpportunities=visibleOpportunities;',context);
+ vm.runInContext(html.slice(start,end)+'\nglobalThis.visibleOpportunities=visibleOpportunities;',context);
  const now=Date.parse('2026-10-11T12:00:00Z');
  const items=[{id:'old',deadline:'2026-03-20'},{id:'active',deadline:'2026-11-18'},{id:'unknown',deadline:''}];
  assert.deepEqual(Array.from(context.visibleOpportunities(items,false,now),x=>x.id),['active','unknown']);
  assert.equal(context.visibleOpportunities(items,true,now).length,3);
  assert.match(html,/id="showExpired" type="checkbox"/);
- assert.match(html,/list=visibleOpportunities\\(list,\\$\\('showExpired'\\)\\.checked\\)/);
+ assert.match(html,/list=visibleOpportunities\(list,\$\('showExpired'\)\.checked\)/);
 });
 
