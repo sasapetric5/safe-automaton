@@ -33,6 +33,18 @@ test('AI endpoint is disabled by default and does not call model', async () => {
   assert.equal((await response.json()).enabled, false);
 });
 
+test('AI endpoint normalizes the explicit enable flag', async () => {
+  let called = false;
+  const env = {
+    SAFE_AUTOMATON_AI_ENABLED: ' TRUE ',
+    SAFE_AUTOMATON_AI_TOKEN: TEST_TOKEN,
+    AI: { run: async () => { called = true; return { response: 'Nacrt.' }; } }
+  };
+  const response = await onRequest({ request: request(valid), env });
+  assert.equal(response.status, 200);
+  assert.equal(called, true);
+});
+
 test('AI endpoint validates method, origin, JSON, task type and access token', async () => {
   assert.equal((await onRequest({ request: request(null, { method: 'GET' }), env: enabledEnv })).status, 405);
   assert.equal((await onRequest({ request: request(valid, { origin: 'https://evil.example' }), env: enabledEnv })).status, 403);
