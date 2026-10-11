@@ -261,7 +261,16 @@ test('Task Workbench requires preflight and a minimum score before creating an o
  assert.ok(start>=0&&end>start);
  const draft=html.slice(start,end);
  assert.match(draft,/!a\.preflight\.ok/);
- assert.match(draft,/a\.score<70/);
+ assert.match(draft,/a\.score===null\|\|a\.score<70/);
+ assert.match(draft,/a\.net<=0/);
  assert.match(html,/Ovlašćena potrošnja: 0 EUR/);
  assert.match(html,/slanje je ručno van ove aplikacije/);
+});
+
+
+test('Task Workbench does not treat language or country alone as automatic rejection criteria', async () => {
+ const html=await source('workbench.html');
+ assert.match(html,/Jezik i zemlja sami po sebi nisu eliminacioni uslovi/i);
+ assert.match(html,/stvarna ograničenja naručioca ili zakona/i);
+ assert.doesNotMatch(html, /id="(?:languageGate|geographyGate)"/);
 });
