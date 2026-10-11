@@ -124,7 +124,7 @@ $('audit').addEventListener('click',async()=>{
   $('audit').disabled=true;$('auditStatus').textContent='Prikupljam javne HTML dokaze…';
   try{
     const response=await fetch('/api/seo-audit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:source})});
-    data=await response.json();
+    const data=await response.json();
     if(!response.ok||!data.ok)throw new Error(data.error||'SEO audit nije uspeo.');
     artifact=formatSeoAudit(data,$('title').value.trim()||'SEO provera');
     activeRecordId=null;
@@ -149,7 +149,7 @@ $('aiDraft').addEventListener('click',async()=>{
   let data = null;
   try{
     const response=await fetch('/api/ai-task',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
-    const data=await response.json();
+    data=await response.json();
     if(!response.ok||!data.ok)throw new Error(data.detail||data.error||'AI nacrt nije uspeo.');
     artifact='# AI RADNI NACRT — '+title+'\n\n'+data.draft+'\n\n---\nStatus: '+data.status+'\nModel: '+data.model+'\nVreme: '+data.generatedAt+'\nProvera: '+data.disclaimer+'\nPoslato klijentu: ne. Spoljne radnje: nijedna.';
     activeRecordId=null;$('output').textContent=artifact;
