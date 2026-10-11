@@ -15,12 +15,14 @@ function request(body, options = {}) {
     headers: {
       'Content-Type': 'application/json',
       ...(options.origin ? { Origin: options.origin } : {}),
+      'X-Safe-Automaton-AI-Token': options.token ?? TEST_TOKEN,
       ...(options.headers || {})
     },
     body: options.method === 'GET' ? undefined : (typeof body === 'string' ? body : JSON.stringify(body))
   });
 }
-const TEST_TOKEN = 'a'.repeat(40);\nconst valid = { taskType: 'seo', title: 'SEO provera', brief: 'Proveri dostavljene nalaze', evidence: 'Naslov postoji; indeksiranje nije provereno.' };
+const TEST_TOKEN = 'a'.repeat(40);
+const valid = { taskType: 'seo', title: 'SEO provera', brief: 'Proveri dostavljene nalaze', evidence: 'Naslov postoji; indeksiranje nije provereno.' };
 const enabledEnv = { SAFE_AUTOMATON_AI_ENABLED: 'true', SAFE_AUTOMATON_AI_TOKEN: TEST_TOKEN, AI: { run: async () => ({ response: '## Nacrt\n\nPotrebna je ljudska provera.' }) } };
 
 test('AI endpoint is disabled by default and does not call model', async () => {
@@ -36,7 +38,9 @@ test('AI endpoint validates method, origin, JSON and task type', async () => {
   assert.equal((await onRequest({ request: request(valid, { origin: 'https://evil.example' }), env: enabledEnv })).status, 403);
   assert.equal((await onRequest({ request: request('{invalid'), env: enabledEnv })).status, 400);
   assert.equal((await onRequest({ request: request({ ...valid, taskType: 'shell' }), env: enabledEnv })).status, 400);
-  assert.equal((await onRequest({ request: request({ ...valid, title: '' }), env: enabledEnv })).status, 400);\n  assert.equal((await onRequest({ request: request(valid, { token: '' }), env: enabledEnv })).status, 401);\n  assert.equal((await onRequest({ request: request(valid), env: { SAFE_AUTOMATON_AI_ENABLED: 'true', AI: enabledEnv.AI } })).status, 503);
+  assert.equal((await onRequest({ request: request({ ...valid, title: '' }), env: enabledEnv })).status, 400);
+  assert.equal((await onRequest({ request: request(valid, { token: '' }), env: enabledEnv })).status, 401);
+  assert.equal((await onRequest({ request: request(valid), env: { SAFE_AUTOMATON_AI_ENABLED: 'true', AI: enabledEnv.AI } })).status, 503);\n  assert.equal((await onRequest({ request: request(valid, { token: '' }), env: enabledEnv })).status, 401);\n  assert.equal((await onRequest({ request: request(valid), env: { SAFE_AUTOMATON_AI_ENABLED: 'true', AI: enabledEnv.AI } })).status, 503);
 });
 
 test('AI endpoint rejects oversized bodies before inference', async () => {
