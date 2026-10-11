@@ -54,13 +54,18 @@ export async function onRequest(context) {
     return json({ error: "Naslov i brief su obavezni." }, 400);
   }
 
-  // Fail closed: no model call unless the owner explicitly enables the feature.
-  if (context.env?.SAFE_AUTOMATON_AI_ENABLED !== "true") {
+  // Fail closed. Diagnose the exact failing condition without exposing secret values.
+  const aiEnabled = context.env?.SAFE_AUTOMATON_AI_ENABLED;
+  if (aiEnabled !== "true") {
     return json({
-      error: "AI izvršavanje je isključeno.",
-      detail: "Za uključivanje je potrebno eksplicitno SAFE_AUTOMATON_AI_ENABLED=true i Workers AI binding AI.",
+      error: "AI izvršavanje je isključeno u ovom izvršavanju.",
+      detail: 'Cloudflare Pages Functions trenutno ne vidi SAFE_AUTOMATON_AI_ENABLED kao tačan tekst "true". Ovo je problem konfiguracije okruženja, pre provere tokena i bindinga; model nije pozvan. Proveri da li je promenljiva podešena za Preview okruženje aktivnog branch deployment-a, a ne samo za Production.',
+      diagnosticCode: "AI_ENABLE_FLAG_NOT_TRUE",
+      runtimeHost: new URL(request.url).hostname,
+      observedEnableFlag: aiEnabled === undefined ? "missing" : typeof aiEnabled,
       engine: "workers-ai",
-      enabled: false
+      enabled: false,
+      modelInvoked: false
     }, 503);
   }
   const expectedToken = context.env?.SAFE_AUTOMATON_AI_TOKEN;
