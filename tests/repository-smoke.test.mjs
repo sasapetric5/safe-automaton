@@ -195,11 +195,11 @@ test('expired grant deadlines are visibly classified as historical and sort behi
 
 test('grant scoring ranks specific AI and automation titles above broad digital and body-only mentions', async () => {
  const html=await source('opportunities.html');
- const start=html.indexOf('function scoreText('),end=html.indexOf('\\nfunction canonical(',start);
+ const start=html.indexOf('function scoreText('),end=html.indexOf('\nfunction canonical(',start);
  assert.ok(start>=0&&end>start);
  const context={terms:id=>id==='grantKeywords'?['artificial intelligence','automation','digital']:['ai','automation','web application','seo','market research'],plainText:value=>String(value??'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/\\s+/g,' ').trim()};
  vm.createContext(context);
- vm.runInContext(html.slice(start,end)+'\\nglobalThis.scoreText=scoreText;',context);
+ vm.runInContext(html.slice(start,end)+'\nglobalThis.scoreText=scoreText;',context);
  const specific=context.scoreText('AI automation research programme',false,'grantKeywords','AI automation research programme');
  const broad=context.scoreText('Digital transformation programme',false,'grantKeywords','Digital Transformation Programme');
  const incidental=context.scoreText('Artificial intelligence mentioned in a general notice',false,'grantKeywords','General Administrative Notice');
