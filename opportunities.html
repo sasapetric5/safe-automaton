@@ -60,7 +60,7 @@ const $=id=>document.getElementById(id);
 const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function normalizeUrl(value){try{const u=new URL(value);if(!['http:','https:'].includes(u.protocol))return '';u.hash='';['utm_source','utm_medium','utm_campaign','utm_term','utm_content','ref'].forEach(k=>u.searchParams.delete(k));return u.href.replace(/\/$/,'')}catch{return ''}}
 function terms(inputId='jobKeywords'){return $(inputId).value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean)}
-function plainText(value){const box=document.createElement('textarea');box.innerHTML=String(value??'').replace(/<[^>]*>/g,' ');return (box.value||'').replace(/\s+/g,' ').trim()}
+function plainText(value){const box=document.createElement('textarea');box.innerHTML=String(value??'').replace(/<[^>]*>/g,' ');return (box.value||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()}
 function scoreText(text,remote,inputId='jobKeywords',titleText=''){
  const normalize=s=>' '+plainText(s).toLowerCase().replace(/[^a-z0-9+#]+/g,' ').trim().replace(/\s+/g,' ')+' ';
  const hay=normalize(text),title=normalize(titleText);
