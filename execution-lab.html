@@ -164,9 +164,14 @@ $('aiDraft').addEventListener('click',async()=>{
       // Show only non-secret diagnostic metadata returned by the endpoint.
       const responseData = typeof data !== 'undefined' ? data : null;
       if (responseData?.diagnosticCode) {
+        const bindings = responseData.runtimeBindings;
         diagnostic = ' [kod: '+responseData.diagnosticCode+
           '; host: '+(responseData.runtimeHost||'nepoznat')+
-          '; flag: '+(responseData.observedEnableFlag||'nepoznat')+']';
+          '; flag: '+(responseData.observedEnableFlag||'nepoznat')+
+          (bindings ? '; env: '+(bindings.envObjectPresent?'da':'ne')+
+            '; enable: '+(bindings.enableFlagPresent?'da':'ne')+
+            '; token binding: '+(bindings.tokenBindingPresent?'da':'ne')+
+            '; AI binding: '+(bindings.aiBindingPresent?'da':'ne') : '')+']';
       }
     } catch {}
     $('auditStatus').textContent='AI nacrt nije napravljen: '+message+diagnostic+'. Model nije pozvan ako je endpoint odbio zahtev pre inference-a.';
