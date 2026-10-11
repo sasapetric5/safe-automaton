@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#10131b">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta name="description" content="Safe Automaton — bezbedno planiranje AI eksperimenata, poslovnih hipoteza i budžeta.">
 <title>Safe Automaton · RankGeo.dev</title>
 <style>
@@ -16,6 +17,8 @@
 <header><div class="brand">SAFE <span>AUTOMATON</span></div><div class="row"><span class="tag">HUMAN-IN-THE-LOOP</span><span class="small">RankGeo.dev · Prototype v0.1</span></div></header>
 <section class="hero"><div class="eyebrow">Bezbedan radni prostor</div><h1>Od hipoteze do<br>proverenog rezultata.</h1><p>Organizujte eksperimente, pratite budžet i procenjujte poslovne ideje pre nego što uključite automatizaciju ili potrošite novac.</p><div class="row" style="margin-top:18px"><button class="primary" onclick="document.querySelector('#newTask').focus()">+ Novi eksperiment</button><button onclick="exportData()">Izvezi podatke (JSON)</button><a class="button" href="./opportunities.html">Opportunity Hunter ↗</a><a class="button" href="./workbench.html">Task Workbench ↗</a><a class="button" href="/execution-lab.html">Execution Lab ↗</a></div></section>
 <div class="grid">
+<section class="card span12" id="notificationCenter" aria-labelledby="notificationHeading"><div class="row between"><h2 id="notificationHeading">Centar za obaveštenja</h2><span class="score" id="notificationStatus">Provera podrške…</span></div><p>Izaberi šta želiš da pratiš. Podešavanja se čuvaju na ovom uređaju. Test obaveštenje proverava dozvole, ali stvarno slanje push poruka sa servera još nije povezano.</p><div class="notification-options"><label><input type="checkbox" id="notifyUrgent" checked> Hitne greške, API limiti i bezbednosna upozorenja</label><label><input type="checkbox" id="notifyApprovals" checked> Zahtevi koji čekaju tvoje odobrenje</label><label><input type="checkbox" id="notifyOpportunities" checked> Nove poslovne prilike i grantovi</label><label><input type="checkbox" id="notifyDaily" checked> Dnevni izveštaji agenata</label></div><div class="row" style="margin-top:12px"><button class="primary" id="enableNotifications">Omogući obaveštenja</button><button id="testNotification">Pošalji test obaveštenje</button><button id="saveNotificationPrefs">Sačuvaj podešavanja</button></div><p class="small" id="notificationHelp" role="status" aria-live="polite">Push isporuka zahteva i serversko čuvanje pretplate, što još nije konfigurisano. Nema plaćenih servisa ni automatskih spoljnih akcija.</p></section>
+
 <section class="card span4"><h2>Budžet i predloženi troškovi</h2><div class="metric">0,00 €</div><p>Ovlašćena potrošnja — trenutno zaključana.</p><div class="notice" style="margin:12px 0">Limit od 0 EUR znači da se nijedan trošak ne odobrava za plaćanje. Evidencija ispod je samo predlog; ne pokreće kupovinu niti spoljašnju radnju.</div><div class="row between"><span class="small">Predloženi troškovi</span><strong id="proposedTotal">0,00 €</strong></div><form id="expenseForm"><label for="expenseName">Opis predloženog troška</label><input id="expenseName" required maxlength="180" placeholder="Npr. alat koji treba proceniti"><div class="formrow"><div><label for="expenseAmount">Iznos (€)</label><input id="expenseAmount" type="number" min=".01" step=".01" required placeholder="0.00"></div><div><label for="expenseDate">Datum predloga</label><input id="expenseDate" type="date" required></div></div><label for="expenseReason">Razlog / očekivana korist</label><input id="expenseReason" maxlength="300" placeholder="Zašto bi ovo moglo biti potrebno?"><button class="primary" style="margin-top:12px" type="submit">Sačuvaj predlog (bez plaćanja)</button></form><div id="expenseList" class="small" style="margin-top:10px"></div></section>
 <section class="card span8"><div class="row between"><h2>Poslovne hipoteze</h2><span class="score">Za validaciju</span></div><p class="muted">Početne ideje za istraživanje. Ocene su okvirne, nisu dokaz tržišne potražnje.</p><div class="hypothesis"><div class="row between"><strong>1. Lokalni SEO izveštaji</strong><span class="score">Nizak početni trošak</span></div><p>Izveštaj koji malom biznisu pokazuje konkretne, proverljive probleme vidljivosti i sledeće korake.</p><p class="small">Test: razgovarati sa 5 lokalnih firmi; utvrditi da li bi platile za izveštaj.</p></div><div class="hypothesis"><div class="row between"><strong>2. Katalog spreman za AI pretragu</strong><span class="score">Jasna isporuka</span></div><p>Uređivanje naziva, opisa, strukturiranih podataka i alt teksta za malu internet prodavnicu.</p><p class="small">Test: napraviti primer pre/posle i tražiti povratne informacije od 5 prodavaca.</p></div><div class="hypothesis"><div class="row between"><strong>3. Generator ponuda za nišu</strong><span class="score">Potrebna specijalizacija</span></div><p>Alat koji pretvara kratki upit u strukturisanu ponudu za jednu jasno određenu profesiju.</p><p class="small">Test: izabrati jednu nišu i ručno isporučiti 3 probna rezultata.</p></div></section>
 <section class="card span12"><div class="row between"><h2>Istraživačke prilike</h2><span class="score">Ručno istraživanje · bez slanja</span></div><p>Beleži javno dostupne prilike ili probleme koje treba proveriti. Nema automatskog pretraživanja interneta u ovoj verziji.</p><form id="researchForm"><div class="formrow"><div><label for="researchTitle">Naziv prilike *</label><input id="researchTitle" required maxlength="180" placeholder="Kratak, konkretan naziv"></div><div><label for="researchUrl">Izvorni URL *</label><input id="researchUrl" type="url" required maxlength="1000" placeholder="https://..."></div></div><div class="formrow"><div><label for="researchDate">Datum pronalaska *</label><input id="researchDate" type="date" required></div><div><label for="researchDeadline">Rok / uslovi (opciono)</label><input id="researchDeadline" maxlength="300" placeholder="Rok, uslovi, ko može da se prijavi"></div></div><label for="researchSummary">Sažetak i relevantnost *</label><textarea id="researchSummary" required maxlength="2000" rows="3" placeholder="Šta je pronađeno i zašto je relevantno?"></textarea><label for="researchUnknowns">Neizvesnosti / šta treba proveriti</label><textarea id="researchUnknowns" maxlength="1000" rows="2" placeholder="Npr. uslovi finansiranja nisu potvrđeni"></textarea><label for="researchNext">Sledeći korak</label><input id="researchNext" maxlength="500" placeholder="Npr. proveriti zvanična pravila i rok"><button class="primary" type="submit" style="margin-top:12px">Sačuvaj istraživačku priliku</button></form><div id="researchList" style="margin-top:14px"></div></section><section class="card span6"><h2>Eksperimenti i zadaci</h2><form id="taskForm"><label for="newTask">Novi zadatak</label><input id="newTask" required maxlength="180" placeholder="Npr. kontaktirati pet potencijalnih korisnika"><div class="formrow"><div><label for="taskHypothesis">Povezana hipoteza</label><select id="taskHypothesis"><option>Lokalni SEO izveštaji</option><option>AI-optimizacija kataloga</option><option>Generator ponuda za nišu</option><option>Opšte istraživanje</option></select></div><div><label for="taskDate">Rok (opciono)</label><input id="taskDate" type="date"></div></div><button class="primary" type="submit" style="margin-top:12px">Dodaj zadatak</button></form><div id="taskList" style="margin-top:12px"></div></section>
@@ -62,6 +65,88 @@ function recordDecision(i,status){const field=document.querySelector('#decision-
 function removeResearch(i){if(confirm('Obrisati ovu priliku iz lokalne evidencije?')){state.research.splice(i,1);save();}}
 function exportData(){const payload={app:'Safe Automaton',schemaVersion:2,exportedAt:new Date().toISOString(),authorizedSpendLimitEUR:0,notice:'Predloženi troškovi nisu plaćeni niti ovlašćeni. APPROVED je samo lokalna evidencija i ne šalje ništa spolja.',...state};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='safe-automaton-data.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function clearData(){if(confirm('Obrisati sve lokalne predloge, zadatke, istraživačke prilike i evidenciju odluka? Preporučujemo da prvo izvezete rezervni JSON. Ova radnja se ne može poništiti.')){state={...initial,proposedCosts:[],tasks:[],research:[],decisions:[]};save();}}
+
+// Notification preferences and local permission/test flow. Real remote push delivery needs a configured sender and subscription store.
+const NOTIFICATION_PREFS_KEY = 'safe-automaton-notification-prefs-v1';
+const notificationDefaults = { urgent: true, approvals: true, opportunities: true, daily: true };
+function readNotificationPrefs() {
+  try { return { ...notificationDefaults, ...JSON.parse(localStorage.getItem(NOTIFICATION_PREFS_KEY) || '{}') }; }
+  catch (_) { return { ...notificationDefaults }; }
+}
+function saveNotificationPrefs() {
+  const prefs = {
+    urgent: document.querySelector('#notifyUrgent').checked,
+    approvals: document.querySelector('#notifyApprovals').checked,
+    opportunities: document.querySelector('#notifyOpportunities').checked,
+    daily: document.querySelector('#notifyDaily').checked
+  };
+  localStorage.setItem(NOTIFICATION_PREFS_KEY, JSON.stringify(prefs));
+  document.querySelector('#notificationHelp').textContent = 'Podešavanja su sačuvana na ovom uređaju. Push slanje sa servera još nije povezano.';
+  return prefs;
+}
+function paintNotificationStatus() {
+  const status = document.querySelector('#notificationStatus');
+  const help = document.querySelector('#notificationHelp');
+  if (!('Notification' in window)) {
+    status.textContent = 'Nije podržano';
+    help.textContent = 'Ovaj pregledač ne podržava Web Notifications. Probaj podržani Android pregledač preko HTTPS-a.';
+  } else if (Notification.permission === 'granted') {
+    status.textContent = 'Dozvola odobrena';
+    help.textContent = 'Pregledač ima dozvolu. Test lokalnog obaveštenja je dostupan; udaljeni push još zahteva serversko povezivanje.';
+  } else if (Notification.permission === 'denied') {
+    status.textContent = 'Dozvola blokirana';
+    help.textContent = 'Dozvola je blokirana u pregledaču. Promeni je u podešavanjima sajta na telefonu.';
+  } else {
+    status.textContent = 'Čeka dozvolu';
+    help.textContent = 'Omogući dozvolu kada želiš. Bez tvoje dozvole aplikacija neće prikazivati obaveštenja.';
+  }
+}
+async function registerNotificationWorker() {
+  if (!('serviceWorker' in navigator) || !/^https:$/.test(location.protocol)) return null;
+  try { return await navigator.serviceWorker.register('/sw.js', { scope: '/' }); }
+  catch (error) {
+    document.querySelector('#notificationHelp').textContent = 'Service worker nije registrovan: ' + (error && error.message ? error.message : 'nepoznata greška');
+    return null;
+  }
+}
+async function enableNotifications() {
+  if (!('Notification' in window)) { paintNotificationStatus(); return; }
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') await registerNotificationWorker();
+    paintNotificationStatus();
+    if (permission === 'granted') document.querySelector('#notificationHelp').textContent = 'Dozvola je aktivna. Sačuvaj podešavanja i koristi test; server za udaljeni push još nije povezan.';
+  } catch (error) {
+    document.querySelector('#notificationHelp').textContent = 'Nije moguće zatražiti dozvolu: ' + (error && error.message ? error.message : 'nepoznata greška');
+  }
+}
+async function testNotification() {
+  saveNotificationPrefs();
+  if (!('Notification' in window)) { paintNotificationStatus(); return; }
+  if (Notification.permission !== 'granted') {
+    document.querySelector('#notificationHelp').textContent = 'Prvo izaberi „Omogući obaveštenja“ i odobri dozvolu.';
+    return;
+  }
+  const registration = await registerNotificationWorker();
+  const title = 'Safe Automaton · Test';
+  const options = { body: 'Test uspešan. Ovo je lokalni test, ne serverska push poruka.', tag: 'safe-automaton-test', data: { url: '/' } };
+  if (registration && registration.showNotification) await registration.showNotification(title, options);
+  else new Notification(title, options);
+  document.querySelector('#notificationHelp').textContent = 'Test obaveštenje je zatraženo od uređaja. Udaljeni push još nije povezan.';
+}
+(function initNotifications() {
+  const prefs = readNotificationPrefs();
+  document.querySelector('#notifyUrgent').checked = prefs.urgent;
+  document.querySelector('#notifyApprovals').checked = prefs.approvals;
+  document.querySelector('#notifyOpportunities').checked = prefs.opportunities;
+  document.querySelector('#notifyDaily').checked = prefs.daily;
+  document.querySelector('#saveNotificationPrefs').addEventListener('click', saveNotificationPrefs);
+  document.querySelector('#enableNotifications').addEventListener('click', enableNotifications);
+  document.querySelector('#testNotification').addEventListener('click', testNotification);
+  paintNotificationStatus();
+  registerNotificationWorker();
+})();
+
 render();
 </script>
 </body></html>
