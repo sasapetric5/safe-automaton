@@ -41,9 +41,13 @@ export async function onRequest(context) {
       return json({ error: "HTML stranica je veća od dozvoljenog limita od 1 MB.", httpStatus: response.status }, 413);
     }
 
-    const html = await response.text();
-    if (html.length > MAX_HTML_BYTES) {
-      return json({ error: "HTML stranica je veća od dozvoljenog limita od 1 MB.", httpStatus: response.status }, 413);
+    let html;
+    try { html = await readTextWithLimit(response, MAX_HTML_BYTES); }
+    catch (error) {
+      if (error instanceof Error && error.message.includes("limit od 1 MB")) {
+        return json({ error: error.message, httpStatus: response.status }, 413);
+      }
+      throw error;
     }
 
     const audit = inspectHtml(html, finalUrl, response);
@@ -116,6 +120,34 @@ async function fetchAllowedPage(initialUrl) {
     return { response, finalUrl: url.href, redirectCount: hop };
   }
   throw new Error("Preusmeravanje nije završeno.");
+}
+
+async function readTextWithLimit(response, maxBytes) {
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new Error("HTML stranica je veća od dozvoljenog limita od 1 MB.");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return new TextDecoder("utf-8", { fatal: false }).decode(concat(chunks, total));
+}
+function concat(chunks, total) {
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.byteLength; }
+  return out;
 }
 
 function inspectHtml(html, finalUrl, response) {
