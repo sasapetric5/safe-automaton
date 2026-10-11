@@ -292,3 +292,21 @@ test('Opportunity Hunter labels job capability as unverified and distinguishes p
  assert.match(context.classifyOpportunity({kind:'grant',title:'Precision Medicine with AI Clinical Trial'}).label,/ISTRAŽIVAČKI \/ INSTITUCIONALNI POZIV/);
  assert.match(context.classifyOpportunity({kind:'grant',title:'Digital innovation support for small companies'}).label,/MOGUĆE FINANSIRANJE/);
 });
+
+
+test('saved opportunities preserve kind, source status and machine-readable deadline', async () => {
+  const html = await source('opportunities.html');
+  assert.match(html, /kind:item\.kind\|\|'research',sourceStatus:item\.sourceStatus\|\|'',deadline:item\.deadline\|\|''/);
+});
+
+test('Task Workbench blocks expired and forecasted non-job opportunities before scoring, task creation or offers', async () => {
+  const html = await source('workbench.html');
+  assert.match(html, /function opportunityGate\(item=currentOpportunity\)/);
+  assert.match(html, /item\.kind!==\'job\'&&\/forecasted\|forecast\|anticipated\|planned\//);
+  assert.match(html, /item\.kind!==\'job\'&&item\.deadline/);
+  assert.match(html, /function preflight\(\)\{const sourceGate=opportunityGate\(\);if\(!sourceGate\.ok\)/);
+  assert.match(html, /function addTaskFromAssessment\(\)\{if\(!currentOpportunity\).*?const sourceGate=opportunityGate\(\);if\(!sourceGate\.ok\)/);
+  assert.match(html, /function draftText\(\)[\s\S]*?const sourceGate=opportunityGate\(\);if\(!sourceGate\.ok\)/);
+  assert.match(html, /function saveDraft\(\)\{if\(!currentOpportunity\).*?const sourceGate=opportunityGate\(\);if\(!sourceGate\.ok\)/);
+  assert.match(html, /function approveOffer\(\)\{const sourceGate=opportunityGate\(\);if\(!sourceGate\.ok\)/);
+});
