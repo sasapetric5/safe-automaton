@@ -193,11 +193,12 @@ test('expired grant deadlines are visibly classified as historical and sort behi
 });
 
 
+
 test('grant scoring ranks specific AI and automation titles above broad digital and body-only mentions', async () => {
  const html=await source('opportunities.html');
  const start=html.indexOf('function scoreText('),end=html.indexOf('\nfunction canonical(',start);
  assert.ok(start>=0&&end>start);
- const context={terms:id=>id==='grantKeywords'?['artificial intelligence','automation','digital']:['ai','automation','web application','seo','market research'],plainText:value=>String(value??'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/\\s+/g,' ').trim()};
+ const context={terms:id=>id==='grantKeywords'?['artificial intelligence','automation','digital']:['ai','automation','web application','seo','market research'],plainText:value=>String(value??'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim()};
  vm.createContext(context);
  vm.runInContext(html.slice(start,end)+'\nglobalThis.scoreText=scoreText;',context);
  const specific=context.scoreText('AI automation research programme',false,'grantKeywords','AI automation research programme');
@@ -208,6 +209,6 @@ test('grant scoring ranks specific AI and automation titles above broad digital 
 });
 test('Grants.gov excludes zero-relevance records and reports the filtered count', async () => {
  const html=await source('opportunities.html');
- assert.match(html,/const usable=mapped\\.filter\\(x=>x\\.url&&x\\.score>0\\)/);
+ assert.match(html,/const usable=mapped\.filter\(x=>x\.url&&x\.score>0\)/);
  assert.match(html,/Izostavljeno zbog niskog poklapanja sa ključnim rečima/);
 });
