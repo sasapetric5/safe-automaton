@@ -164,3 +164,30 @@ test('EU grant keywords score independently instead of becoming one space-separa
  assert.ok(scored.score>0);
  assert.ok(scored.hits.includes('artificial intelligence'));
 });
+
+test('grant scoring treats AI and artificial intelligence as equivalent and ranks relevant titles above incidental mentions', async () => {
+ const html=await source('opportunities.html');
+ const start=html.indexOf('function scoreText('),end=html.indexOf('\\nfunction canonical(',start);
+ assert.ok(start>=0&&end>start);
+ const context={terms:id=>id==='grantKeywords'?['artificial intelligence','automation','digital']:['ai','automation','web application','seo','market research'],plainText:value=>String(value??'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/\\s+/g,' ').trim()};
+ vm.createContext(context);
+ vm.runInContext(html.slice(start,end)+'\\nglobalThis.scoreText=scoreText;',context);
+ const aiTitle=context.scoreText('AI for advanced and collective perception and decision making',false,'grantKeywords','AI for advanced and collective perception and decision making');
+ const aiLongForm=context.scoreText('Artificial intelligence and cybersecurity education innovation',false,'grantKeywords','Artificial Intelligence and Cybersecurity Education Innovation');
+ const irrelevant=context.scoreText('Generic administrative notice',false,'grantKeywords','Generic administrative notice');
+ assert.ok(aiTitle.score>0,'AI acronym should match the artificial intelligence query');
+ assert.ok(aiLongForm.score>irrelevant.score);
+ assert.ok(aiTitle.hits.includes('artificial intelligence'));
+});
+test('expired grant deadlines are visibly classified as historical and sort behind non-expired opportunities', async () => {
+ const html=await source('opportunities.html');
+ const start=html.indexOf('function opportunityStatus('),end=html.indexOf('\\nfunction deadlineState(',start);
+ assert.ok(start>=0&&end>start);
+ const context={Date};
+ vm.createContext(context);
+ vm.runInContext(html.slice(start,end)+'\\nglobalThis.opportunityStatus=opportunityStatus;',context);
+ const now=Date.parse('2026-10-11T12:00:00Z');
+ assert.match(context.opportunityStatus({deadline:'2026-03-20'},now).label,/ROK ISTEKAO/);
+ assert.equal(context.opportunityStatus({deadline:'2026-11-18'},now).expired,false);
+ assert.equal(context.opportunityStatus({deadline:''},now).expired,false);
+});
