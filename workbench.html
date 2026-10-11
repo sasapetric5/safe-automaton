@@ -35,7 +35,7 @@
 <div class="formrow"><div><label for="costs">Direktni troškovi (€)</label><input id="costs" type="number" min="0" step="0.01" value="0"></div><div><label for="deadline">Interni rok za isporuku</label><input id="deadline" type="date"></div></div>
 <div class="notice" style="margin:10px 0">Prvo proveri izvodljivost. Nepoznat ili negativan odgovor za bilo koji eliminacioni uslov blokira bodovanje za prijavu i pripremu ponude. Proveri postojeće modele i alate pre nego što zaključiš da sposobnost nedostaje.</div>
 <div class="formrow"><div><label for="capabilityGate">Agent ili odobreni alat ume da izvrši sve obavezne delove?</label><select id="capabilityGate"><option value="unknown" selected>Nije provereno</option><option value="yes">Da — provereno</option><option value="no">Ne — postoji kritičan nedostatak</option></select></div><div><label for="deadlineGate">Rok za prijavu, izradu, QA i ispravke je realan?</label><select id="deadlineGate"><option value="unknown" selected>Nije provereno</option><option value="yes">Da — ostaje rezerva</option><option value="no">Ne — rok nije izvodljiv</option></select></div></div>
-<div class="formrow"><div><label for="requirementsGate">Obavezni uslovi i kriterijumi prihvatanja su provereni?</label><select id="requirementsGate"><option value="unknown" selected>Nije provereno</option><option value="yes">Da — nema poznate prepreke</option><option value="no">Ne — postoji neispunjen uslov</option></select></div><div><label for="capability">Procena sposobnosti (0–100), tek nakon provere</label><input id="capability" type="number" min="0" max="100" value="80"></div></div>
+<div class="formrow"><div><label for="requirementsGate">Stvarni obavezni uslovi naručioca i kriterijumi prihvatanja su provereni?</label><select id="requirementsGate"><option value="unknown" selected>Nije provereno</option><option value="yes">Da — nema poznate prepreke</option><option value="no">Ne — postoji neispunjen uslov</option></select></div><div><label for="capability">Procena sposobnosti (0–100), tek nakon provere</label><input id="capability" type="number" min="0" max="100" value="80"></div></div>
 <div class="formrow"><div><label for="deadlineFit">Rezerva roka / realnost (0–100)</label><input id="deadlineFit" type="number" min="0" max="100" value="80"></div><div><label for="winChance">Procena šanse da dobijemo posao (0–100)</label><input id="winChance" type="number" min="0" max="100" value="35"></div></div>
 <div class="formrow"><div><label for="risk">Kontrola rizika (0–100)</label><input id="risk" type="number" min="0" max="100" value="75"></div><div class="small">Minimalni prag za nastavak: 70/100. Ispod praga nema pripreme ponude.</div></div>
 <div class="row" style="justify-content:space-between;margin-top:12px"><div><div class="small">Procena isplativosti</div><div class="score" id="score">—/100</div></div><div><div class="small">Procena neto zarade po satu</div><strong id="hourly">—</strong></div></div>
@@ -60,7 +60,7 @@
 </section>
 <section class="card span12">
 <h2>Bezbednosne granice</h2>
-<ul class="muted"><li>Ovlašćena potrošnja: 0 EUR. Ovaj ekran ne integriše plaćene API-je ili spoljne usluge.</li><li>Svaka ponuda zahteva tvoje izričito odobrenje. Čak i nakon odobrenja, slanje je ručno van ove aplikacije.</li><li>Nema automatskog prihvatanja ugovora, slanja poruka, podnošenja prijava ili trošenja novca.</li><li>Ne koristi se neodobrena automatizacija Upwork-a, Fiverr-a ili drugih platformi.</li><li>Pre konačne ponude proveri pravila platforme, dozvoljenost rada iz Srbije, rok, obim, prava na rezultat i uslove naplate.</li></ul>
+<ul class="muted"><li>Ovlašćena potrošnja: 0 EUR. Ovaj ekran ne integriše plaćene API-je ili spoljne usluge.</li><li>Svaka ponuda zahteva tvoje izričito odobrenje. Čak i nakon odobrenja, slanje je ručno van ove aplikacije.</li><li>Nema automatskog prihvatanja ugovora, slanja poruka, podnošenja prijava ili trošenja novca.</li><li>Ne koristi se neodobrena automatizacija Upwork-a, Fiverr-a ili drugih platformi.</li><li>Jezik i zemlja sami po sebi nisu eliminacioni uslovi. Proveri stvarna ograničenja naručioca ili zakona (npr. lokalna licenca, fizičko prisustvo ili izričito ograničena podobnost), kao i rok, obim, prava na rezultat i naplatu.</li></ul>
 </section>
 </div>
 <footer>Safe Automaton · Task Workbench MVP · Ocena je heuristika i mora se kalibrisati stvarnim rezultatima. Pozadinsko 24/7 izvršavanje još nije implementirano.</footer>
@@ -92,6 +92,8 @@ function addTaskFromAssessment(){if(!currentOpportunity){alert('Prvo izaberi pri
 function draftText(){
  if(!currentOpportunity){alert('Izaberi priliku pre pravljenja ponude.');return}
  const a=updateScore();
+ if(!a.preflight.ok){alert(a.preflight.reason);return}
+ if(a.score===null||a.score<70){alert('Ocena je ispod minimalnog praga 70/100 — nacrt ponude nije dozvoljen.');return}
  if(a.net<=0){alert('Neto procena mora biti pozitivna da bi se napravio nacrt ponude.');return}
  const title=currentOpportunity.title;
  const client=$('client').value.trim()||'Poštovani';
