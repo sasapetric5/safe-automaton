@@ -67,3 +67,39 @@ test("captures finish reason only when provided", () => {
   assert.equal(d.status, "incomplete");
   assert.doesNotMatch(JSON.stringify(d), /private draft|do-not-copy|completionStatus|maxTokens/);
 });
+
+
+test("AI endpoint returns the exact diagnostic contract for empty model output", async () => {
+  const { onRequest } = await import("../functions/api/ai-task.js");
+  const token = "test-token-value-with-more-than-thirty-two-characters";
+  const request = new Request("https://example.test/api/ai-task", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Origin": "https://example.test",
+      "X-Safe-Automaton-AI-Token": token
+    },
+    body: JSON.stringify({ taskType: "seo", title: "Test", brief: "Test brief", evidence: "" })
+  });
+  const response = await onRequest({
+    request,
+    env: {
+      SAFE_AUTOMATON_AI_ENABLED: "true",
+      SAFE_AUTOMATON_AI_TOKEN: token,
+      AI: { run: async () => ({ response: "", status: "incomplete", usage: { prompt_tokens: 10, completion_tokens: 0, total_tokens: 10 }, output: [] }) }
+    }
+  });
+  assert.equal(response.status, 502);
+  const body = await response.json();
+  assert.equal(body.ok, false);
+  assert.equal(body.diagnosticCode, "AI_MODEL_EMPTY_OUTPUT");
+  assert.deepEqual(
+    ["status", "finishReason", "maxTokensRequested", "usage", "blocks"].filter(key => !(key in body.diagnostics)),
+    []
+  );
+  assert.equal(body.diagnostics.status, "incomplete");
+  assert.equal(body.diagnostics.finishReason, null);
+  assert.equal(body.diagnostics.maxTokensRequested, 900);
+  assert.deepEqual(body.diagnostics.usage, { prompt_tokens: 10, completion_tokens: 0, total_tokens: 10 });
+  assert.deepEqual(body.diagnostics.blocks, []);
+});
