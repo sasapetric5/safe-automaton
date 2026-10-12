@@ -366,7 +366,7 @@ test('SEO audit endpoint enforces method, origin and strict host allowlist witho
   const api = await source('functions/api/seo-audit.js');
   const context = { URL, Response, AbortSignal, TextDecoder, Uint8Array, Date, performance, crypto, fetch: () => { throw new Error('fetch must not run for blocked requests'); } };
   vm.createContext(context);
-  vm.runInContext(api.replace('export async function onRequest', 'async function onRequest') + '\nglobalThis.onRequest=onRequest;', context);
+  vm.runInContext(api.replace('export async function onRequest', 'async function onRequest').replace('export function createSeoAuditHandler', 'function createSeoAuditHandler') + '\nglobalThis.onRequest=onRequest;', context);
   const handler = context.onRequest;
   const get = await handler({request:new Request('https://safe-automaton.pages.dev/api/seo-audit',{method:'GET'})});
   assert.equal(get.status,405);
@@ -381,7 +381,7 @@ test('SEO audit endpoint returns strict v2 evidence, metrics and content hash wi
   const html = '<!doctype html><html lang="sr"><head><title>Test naslov stranice koji je dovoljno opisni</title><meta name="description" content="Opis stranice za testiranje sadržaja i metapodataka"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="canonical" href="https://savremenikoreni.com/"></head><body><h1>Test naslov</h1><img src="/photo.jpg" alt="Opis fotografije"><a href="/kontakt">Kontakt</a></body></html>';
   const context = { URL, Response, AbortSignal, TextDecoder, Uint8Array, Date, performance, crypto, fetch: async () => new Response(html,{status:200,headers:{'Content-Type':'text/html; charset=utf-8'}}) };
   vm.createContext(context);
-  vm.runInContext(api.replace('export async function onRequest', 'async function onRequest') + '\nglobalThis.onRequest=onRequest;', context);
+  vm.runInContext(api.replace('export async function onRequest', 'async function onRequest').replace('export function createSeoAuditHandler', 'function createSeoAuditHandler') + '\nglobalThis.onRequest=onRequest;', context);
   const response = await context.onRequest({request:new Request('https://safe-automaton.pages.dev/api/seo-audit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:'https://savremenikoreni.com/'})})});
   assert.equal(response.status,200);
   const data = await response.json();
