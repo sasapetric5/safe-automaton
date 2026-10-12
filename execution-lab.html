@@ -163,44 +163,66 @@ $('audit').addEventListener('click',async()=>{
   }finally{$('audit').disabled=false;}
 });
 $('aiDraft').addEventListener('click',async()=>{
+  const button=$('aiDraft');
   const taskType=$('taskType').value;
   const title=$('title').value.trim();
   const brief=$('brief').value.trim();
-  if(!title||!brief){$('auditStatus').textContent='Unesi naslov i brief pre izrade AI nacrta.';return;}
-  const evidence=($('facts').value.trim()||artifact).slice(0,4000);
-  const aiToken=$('aiToken').value.trim();
-  if(aiToken.length<32){$('auditStatus').textContent='Unesi AI pristupni token (najmanje 32 znaka); token nije sačuvan.';return;}
-  $('aiDraft').disabled=true;$('auditStatus').textContent='Proveravam da li je AI eksplicitno omogućen…';
-  let data = null;
+  if(!title||!brief){
+    $('auditStatus').style.color='var(--bad)';
+    $('auditStatus').textContent='Unesi naslov i brief pre izrade nacrta.';
+    return;
+  }
+  button.disabled=true;
+  $('auditStatus').style.color='var(--text)';
+  $('auditStatus').textContent='Proveravam dostupnost AI servisa…';
+  let fallbackReason='';
   try{
-    const response=await fetch('/api/ai-task',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
-    data=await response.json();
-    if(!response.ok||!data.ok)throw new Error(data.detail||data.error||'AI nacrt nije uspeo.');
-    artifact='# AI RADNI NACRT — '+title+'\n\n'+data.draft+'\n\n---\nStatus: '+data.status+'\nModel: '+data.model+'\nVreme: '+data.generatedAt+'\nProvera: '+data.disclaimer+'\nPoslato klijentu: ne. Spoljne radnje: nijedna.';
-    activeRecordId=null;$('output').textContent=artifact;
-    $('copy').disabled=$('download').disabled=$('save').disabled=false;
-    getChecks().forEach(x=>x.checked=false);qa();
-    $('saved').textContent='AI nacrt napravljen; nije nezavisno proveren niti poslat. Ručni QA je resetovan.';
-    $('auditStatus').textContent='AI nacrt je spreman za ljudsku proveru. Proveri činjenice, preporuke i ograničenja pre upotrebe.';
-  }catch(error){
-    const message = error instanceof Error ? error.message : 'nepoznata greška';
-    let diagnostic = '';
-    try {
-      // Show only non-secret diagnostic metadata returned by the endpoint.
-      const responseData = typeof data !== 'undefined' ? data : null;
-      if (responseData?.diagnosticCode) {
-        const bindings = responseData.runtimeBindings;
-        diagnostic = ' [kod: '+responseData.diagnosticCode+
-          '; host: '+(responseData.runtimeHost||'nepoznat')+
-          '; flag: '+(responseData.observedEnableFlag||'nepoznat')+
-          (bindings ? '; env: '+(bindings.envObjectPresent?'da':'ne')+
-            '; enable: '+(bindings.enableFlagPresent?'da':'ne')+
-            '; token binding: '+(bindings.tokenBindingPresent?'da':'ne')+
-            '; AI binding: '+(bindings.aiBindingPresent?'da':'ne') : '')+']';
+    const evidence=($('facts').value.trim()||artifact).slice(0,4000);
+    const aiToken=$('aiToken').value.trim();
+    const headers={'Content-Type':'application/json'};
+    if(aiToken.length>=32)headers['X-Safe-Automaton-AI-Token']=aiToken;
+    let response;
+    try{
+      response=await fetch('/api/ai-task',{method:'POST',headers,body:JSON.stringify({taskType,title,brief,evidence})});
+    }catch(error){
+      fallbackReason='Mrežna greška: '+(error instanceof Error?error.message:'zahtev nije uspeo');
+    }
+    if(response){
+      const contentType=response.headers.get('content-type')||'';
+      if(!contentType.includes('application/json'))throw new Error('Server nije vratio JSON (HTTP '+response.status+').');
+      const data=await response.json();
+      if(data.diagnosticCode==='AI_ENABLE_FLAG_MISSING_AT_RUNTIME'||data.error==='AI_DISABLED'){
+        fallbackReason='AI nije omogućen u Cloudflare runtime okruženju ['+(data.diagnosticCode||data.error)+'].';
+      }else if(!response.ok||!data.ok){
+        throw new Error(data.detail||data.error||'AI nacrt nije uspeo (HTTP '+response.status+').');
+      }else{
+        if(typeof data.draft!=='string'||!data.draft.trim())throw new Error('AI servis je vratio prazan nacrt.');
+        artifact='# AI RADNI NACRT — '+title+'\n\n'+data.draft+'\n\n---\nStatus: '+(data.status||'nije potvrđen')+'\nModel: '+(data.model||'nije naveden')+'\nVreme: '+(data.generatedAt||'nije navedeno')+'\nProvera: '+(data.disclaimer||'Nije nezavisno provereno.')+'\nPoslato klijentu: ne. Spoljne radnje: nijedna.';
       }
-    } catch {}
-    $('auditStatus').textContent='AI nacrt nije napravljen: '+message+diagnostic+'. Model nije pozvan ako je endpoint odbio zahtev pre inference-a.';
-  }finally{$('aiDraft').disabled=false;}
+    }
+    if(fallbackReason){
+      artifact=template(taskType,title,brief,$('source').value.trim(),$('deadline').value,$('facts').value.trim());
+      artifact+='\n\n## Razlog za lokalni režim\n'+fallbackReason+'\nAI nije korišćen; sadržaj je šablon i nije nezavisno proverena analiza.';
+    }
+    activeRecordId=null;
+    $('output').textContent=artifact;
+    $('copy').disabled=$('download').disabled=$('save').disabled=!Boolean(artifact);
+    getChecks().forEach(x=>x.checked=false);
+    qa();
+    $('saved').style.color='var(--accent)';
+    $('saved').textContent=fallbackReason
+      ?'Lokalni strukturirani nacrt je napravljen. Nije AI analiza, nije nezavisno proveren i nije poslat.'
+      :'AI nacrt je napravljen. Nije nezavisno proveren niti poslat; ručni QA je resetovan.';
+    $('auditStatus').style.color=fallbackReason?'var(--warn)':'var(--accent)';
+    $('auditStatus').textContent=fallbackReason
+      ?fallbackReason+' Pripremljen je lokalni nacrt; pregledaj ga i izvrši QA ručno.'
+      :'AI nacrt je spreman za ljudsku proveru. Proveri činjenice i preporuke pre upotrebe.';
+  }catch(error){
+    $('auditStatus').style.color='var(--bad)';
+    $('auditStatus').textContent='AI nacrt nije napravljen: '+(error instanceof Error?error.message:'nepoznata greška')+'. Lokalni fallback nije pokrenut jer odgovor nije prepoznat kao očekivano isključenje AI-ja ili mrežni prekid.';
+  }finally{
+    button.disabled=false;
+  }
 });
 $('reset').addEventListener('click',()=>{
   if($('reset').disabled)return;
