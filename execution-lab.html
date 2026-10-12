@@ -216,7 +216,6 @@ $('reset').addEventListener('click',()=>{
     $('saved').style.color='var(--bad)';$('saved').textContent='Čišćenje forme nije uspelo: '+(error instanceof Error?error.message:'nepoznata greška')+'.';
   }finally{$('reset').disabled=false;}
 });
-});
 getChecks().forEach(x=>x.addEventListener('change',qa));
 $('copy').addEventListener('click',async()=>{
   if(!artifact || $('copy').disabled) return;
