@@ -182,7 +182,7 @@ function textFromCandidate(value, depth = 0) {
   if (depth > 4 || value == null) return "";
   if (typeof value === "string") return value.trim();
   if (Array.isArray(value)) {
-    return value.map(item => textFromCandidate(item, depth + 1)).filter(Boolean).join("\\n").trim();
+    return value.map(item => textFromCandidate(item, depth + 1)).filter(Boolean).join("\n").trim();
   }
   if (typeof value !== "object") return "";
   // Some inference responses wrap text in content blocks rather than a single string.
