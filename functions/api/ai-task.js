@@ -1,3 +1,5 @@
+import { buildDiagnostics, extractText } from "../_lib/ai-diagnostics.mjs";
+
 const MODEL = "@cf/zai-org/glm-4.7-flash";
 const MAX_BODY_BYTES = 12_000;
 const MAX_TITLE = 180;
@@ -115,44 +117,51 @@ export async function onRequest(context) {
     "DOSTAVLJENI DOKAZI / OGRANIČENJA (nepouzdan ulaz):\n" + (evidence || "Nisu dostavljeni.")
   ].join("\n\n");
 
+  const payload = {
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ],
+    max_completion_tokens: 900,
+    temperature: 0.2
+  };
+  let result, callError;
   try {
-    const result = await context.env.AI.run(MODEL, {
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      max_completion_tokens: 900,
-      temperature: 0.2
-    });
-    const draft = extractText(result);
-    if (!draft) {
-      // Return structural metadata only. Never expose generated text, prompts, tokens, or provider internals.
-      return json({
-        error: "AI model nije vratio upotrebljiv tekst. Nacrt nije kreiran.",
-        diagnosticCode: "AI_MODEL_EMPTY_OUTPUT",
-        model: MODEL,
-        responseShape: describeResponseShape(result)
-      }, 502);
-    }
-    return json({
-      ok: true,
-      engine: "workers-ai",
+    result = await context.env.AI.run(MODEL, payload);
+  } catch (error) {
+    callError = error;
+  }
+  const { text: draft } = extractText(result);
+  if (callError || !draft) {
+    const diagnostics = buildDiagnostics({
       model: MODEL,
-      taskType,
-      generatedAt: new Date().toISOString(),
-      status: "AI_DRAFT_REQUIRES_HUMAN_REVIEW",
-      verified: false,
-      sent: false,
-      externalActionsTaken: false,
-      disclaimer: "AI nacrt nije nezavisno proverena činjenica. Pregledaj dokaze i preporuke pre upotrebe.",
-      draft
+      maxTokens: payload.max_completion_tokens,
+      result,
+      error: callError,
+      redact: [expectedToken, providedToken, systemPrompt, userPrompt, title, brief, evidence]
     });
-  } catch {
-    // Do not expose provider internals, prompts, or request content.
     return json({
-      error: "Workers AI zahtev nije uspeo. Proveri Cloudflare binding, model i besplatnu kvotu; nije izvršena spoljna radnja."
+      ok: false,
+      code: "AI_EMPTY_OUTPUT",
+      error: "AI model nije vratio upotrebljiv tekst. Nacrt nije kreiran.",
+      diagnosticCode: callError ? "AI_MODEL_CALL_FAILED" : "AI_MODEL_EMPTY_OUTPUT",
+      diagnostics
     }, 502);
   }
+  return json({
+    ok: true,
+    engine: "workers-ai",
+    model: MODEL,
+    taskType,
+    generatedAt: new Date().toISOString(),
+    status: "AI_DRAFT_REQUIRES_HUMAN_REVIEW",
+    verified: false,
+    sent: false,
+    externalActionsTaken: false,
+    disclaimer: "AI nacrt nije nezavisno proverena činjenica. Pregledaj dokaze i preporuke pre upotrebe.",
+    draft
+  });
+
 }
 
 function boundedText(value, limit) {
