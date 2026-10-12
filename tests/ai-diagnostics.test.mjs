@@ -59,13 +59,13 @@ test("reports sanitized model/API errors and redacts supplied secrets", () => {
 test("captures finish reason only when provided", () => {
   assert.equal(buildDiagnostics({ result: { response: "", choices: [{ finish_reason: "length", message: { content: "" } }] } }).finishReason, "length");
   assert.equal(buildDiagnostics({ result: { response: "" } }).finishReason, null);
-  assert.equal(buildDiagnostics({ result: { response: "", status: "incomplete", usage: { prompt_tokens: 12, completion_tokens: 0, total_tokens: 12, secret: "do-not-copy" }, output: [{ type: "text", text: "private draft" }] }, maxTokensRequested: 900 }).status, "incomplete");
+  assert.equal(buildDiagnostics({ result: { response: "", status: "incomplete", usage: { prompt_tokens: 12, completion_tokens: 0, total_tokens: 12, secret: "do-not-copy" }, output: [] }, maxTokensRequested: 900 }).status, "incomplete");
   const d = buildDiagnostics({ result: { response: "", status: "incomplete", usage: { prompt_tokens: 12, completion_tokens: 0, total_tokens: 12, secret: "do-not-copy" }, output: [{ type: "text", text: "private draft" }] }, maxTokensRequested: 900 });
   assert.equal(d.maxTokensRequested, 900);
   assert.deepEqual(d.usage, { prompt_tokens: 12, completion_tokens: 0, total_tokens: 12 });
   assert.deepEqual(d.blocks, [{ type: "text", textLength: 13 }]);
   assert.equal(d.status, "incomplete");
-  assert.doesNotMatch(JSON.stringify(d), /private draft|do-not-copy|completionStatus|maxTokens/);
+  assert.doesNotMatch(JSON.stringify(d), /private draft|do-not-copy|completionStatus|"maxTokens":/);
 });
 
 
