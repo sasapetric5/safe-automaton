@@ -96,3 +96,27 @@ test("AI task endpoint handles empty model output and provider failure safely", 
   assert.equal(failed.response.status, 502);
   assert.doesNotMatch(JSON.stringify(failed.data), /secret provider details/);
 });
+
+test("AI task endpoint extracts nested text blocks from model output", async () => {
+  const env = {
+    SAFE_AUTOMATON_AI_ENABLED: "true",
+    AI: { run: async () => ({ response: [{ type: "text", text: "## Nacrt" }, { type: "text", text: "Proveri činjenice." }] }) }
+  };
+  const { response, data } = await call(request({ taskType: "qa", title: "QA", brief: "Napravi plan." }), env);
+  assert.equal(response.status, 200);
+  assert.match(data.draft, /## Nacrt/);
+  assert.match(data.draft, /Proveri činjenice/);
+});
+
+test("AI task endpoint returns safe response-shape diagnostics for empty output", async () => {
+  const env = {
+    SAFE_AUTOMATON_AI_ENABLED: "true",
+    AI: { run: async () => ({ response: "", usage: { prompt_tokens: 12 }, choices: [{ message: { content: "" } }] }) }
+  };
+  const { response, data } = await call(request({ taskType: "qa", title: "QA", brief: "Napravi plan." }), env);
+  assert.equal(response.status, 502);
+  assert.equal(data.diagnosticCode, "AI_MODEL_EMPTY_OUTPUT");
+  assert.equal(data.responseShape.response.length, 0);
+  assert.equal(data.responseShape.choicesCount, 1);
+  assert.doesNotMatch(JSON.stringify(data), /prompt_tokens|Napravi plan|QA/);
+});

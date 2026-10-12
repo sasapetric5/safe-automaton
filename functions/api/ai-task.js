@@ -126,7 +126,13 @@ export async function onRequest(context) {
     });
     const draft = extractText(result);
     if (!draft) {
-      return json({ error: "AI model nije vratio upotrebljiv tekst. Nacrt nije kreiran." }, 502);
+      // Return structural metadata only. Never expose generated text, prompts, tokens, or provider internals.
+      return json({
+        error: "AI model nije vratio upotrebljiv tekst. Nacrt nije kreiran.",
+        diagnosticCode: "AI_MODEL_EMPTY_OUTPUT",
+        model: MODEL,
+        responseShape: describeResponseShape(result)
+      }, 502);
     }
     return json({
       ok: true,
@@ -154,10 +160,68 @@ function boundedText(value, limit) {
 }
 
 function extractText(result) {
-  if (typeof result?.response === "string") return result.response.trim();
-  if (typeof result?.result?.response === "string") return result.result.response.trim();
-  const content = result?.choices?.[0]?.message?.content;
-  return typeof content === "string" ? content.trim() : "";
+  const candidates = [
+    result?.response,
+    result?.result?.response,
+    result?.output_text,
+    result?.generated_text,
+    result?.text,
+    result?.choices?.[0]?.message?.content,
+    result?.result?.choices?.[0]?.message?.content,
+    result?.output?.[0]?.content,
+    result?.result?.output_text
+  ];
+  for (const candidate of candidates) {
+    const text = textFromCandidate(candidate);
+    if (text) return text;
+  }
+  return "";
+}
+
+function textFromCandidate(value, depth = 0) {
+  if (depth > 4 || value == null) return "";
+  if (typeof value === "string") return value.trim();
+  if (Array.isArray(value)) {
+    return value.map(item => textFromCandidate(item, depth + 1)).filter(Boolean).join("\n").trim();
+  }
+  if (typeof value !== "object") return "";
+  // Some inference responses wrap text in content blocks rather than a single string.
+  for (const key of ["text", "content", "response", "output_text", "generated_text"]) {
+    const text = textFromCandidate(value[key], depth + 1);
+    if (text) return text;
+  }
+  return "";
+}
+
+function describeResponseShape(result) {
+  if (result == null) return { resultType: String(result) };
+  if (typeof result !== "object") return { resultType: typeof result };
+  const keys = Object.keys(result).slice(0, 30);
+  const shape = { resultType: Array.isArray(result) ? "array" : "object", topLevelKeys: keys };
+  for (const key of ["response", "output_text", "generated_text", "text", "content", "result"]) {
+    if (!(key in result)) continue;
+    const value = result[key];
+    shape[key] = {
+      type: value === null ? "null" : Array.isArray(value) ? "array" : typeof value,
+      ...(typeof value === "string" ? { length: value.length } : {}),
+      ...(Array.isArray(value) ? { length: value.length } : {}),
+      ...(value && typeof value === "object" && !Array.isArray(value) ? { keys: Object.keys(value).slice(0, 20) } : {})
+    };
+  }
+  if (Array.isArray(result.choices)) {
+    shape.choicesCount = result.choices.length;
+    const message = result.choices[0]?.message;
+    if (message && typeof message === "object") {
+      shape.firstChoiceMessageKeys = Object.keys(message).slice(0, 20);
+      const value = message.content;
+      shape.firstChoiceContent = {
+        type: value === null ? "null" : Array.isArray(value) ? "array" : typeof value,
+        ...(typeof value === "string" ? { length: value.length } : {}),
+        ...(Array.isArray(value) ? { length: value.length } : {})
+      };
+    }
+  }
+  return shape;
 }
 
 function json(data, status = 200, extraHeaders = {}) {
