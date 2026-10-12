@@ -55,7 +55,7 @@ test('Execution Lab labels templates and QA as local/manual, not verified AI exe
   const html = await source('execution-lab.html');
   assert.match(html, /AI generisanje je opciono i podrazumevano isključeno/i);
   assert.match(html, /Ove kućice nisu automatski dokazi/);
-  assert.match(html, /ne pokreće proizvoljan kod/);
+  assert.match(html, /ne pokreće AI model/);
   assert.match(html, /safe-automaton-execution-lab-v1/);
 });
 
