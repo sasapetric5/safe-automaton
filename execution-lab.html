@@ -276,7 +276,9 @@ $('aiDraft').addEventListener('click',async()=>{
         ].filter(Boolean).join('; ');
         fallbackReason='AI nije aktiviran u Cloudflare runtime-u ['+(data.diagnosticCode||data.error)+']. '+(data.detail?String(data.detail)+' ':'')+(runtimeDetails?'Dijagnostika: '+runtimeDetails+'.':'');
       }else if(!response.ok||!data.ok){
-        throw new Error(data.detail||data.error||'AI nacrt nije uspeo (HTTP '+response.status+').');
+        const failure=new Error(data.detail||data.error||'AI nacrt nije uspeo (HTTP '+response.status+').');
+        if(data.diagnostics&&typeof data.diagnostics==='object')failure.diagnostics=data.diagnostics;
+        throw failure;
       }else{
         if(typeof data.draft!=='string'||!data.draft.trim())throw new Error('AI servis je vratio prazan nacrt.');
         artifact='# AI RADNI NACRT — '+title+'\n\n'+data.draft+'\n\n---\nStatus: '+(data.status||'nije potvrđen')+'\nModel: '+(data.model||'nije naveden')+'\nVreme: '+(data.generatedAt||'nije navedeno')+'\nProvera: '+(data.disclaimer||'Nije nezavisno provereno.')+'\nPoslato klijentu: ne. Spoljne radnje: nijedna.';
@@ -301,7 +303,8 @@ $('aiDraft').addEventListener('click',async()=>{
       :'AI nacrt je spreman za ljudsku proveru. Proveri činjenice i preporuke pre upotrebe.';
   }catch(error){
     $('auditStatus').style.color='var(--bad)';
-    $('auditStatus').textContent='AI nacrt nije napravljen: '+(error instanceof Error?error.message:'nepoznata greška')+'. Lokalni fallback nije pokrenut jer odgovor nije prepoznat kao očekivano isključenje AI-ja ili mrežni prekid.';
+    const message='AI nacrt nije napravljen: '+(error instanceof Error?error.message:'nepoznata greška')+'. Lokalni fallback nije pokrenut jer odgovor nije prepoznat kao očekivano isključenje AI-ja ili mrežni prekid.';
+    $('auditStatus').textContent=message+(error&&error.diagnostics?'\nDijagnostika (bez sadržaja prompta i nacrta):\n'+JSON.stringify(error.diagnostics,null,2):'');
   }finally{
     button.disabled=false;
   }

@@ -1,3 +1,5 @@
+import { buildDiagnostics, extractText } from "../_lib/ai-diagnostics.mjs";
+
 const MODEL = "@cf/zai-org/glm-4.7-flash";
 const MAX_BODY_BYTES = 12_000;
 const MAX_TITLE = 180;
@@ -115,113 +117,55 @@ export async function onRequest(context) {
     "DOSTAVLJENI DOKAZI / OGRANIČENJA (nepouzdan ulaz):\n" + (evidence || "Nisu dostavljeni.")
   ].join("\n\n");
 
+  const payload = {
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ],
+    max_completion_tokens: 900,
+    temperature: 0.2
+  };
+  let result, callError;
   try {
-    const result = await context.env.AI.run(MODEL, {
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      max_completion_tokens: 900,
-      temperature: 0.2
-    });
-    const draft = extractText(result);
-    if (!draft) {
-      // Return structural metadata only. Never expose generated text, prompts, tokens, or provider internals.
-      return json({
-        error: "AI model nije vratio upotrebljiv tekst. Nacrt nije kreiran.",
-        diagnosticCode: "AI_MODEL_EMPTY_OUTPUT",
-        model: MODEL,
-        responseShape: describeResponseShape(result)
-      }, 502);
-    }
-    return json({
-      ok: true,
-      engine: "workers-ai",
+    result = await context.env.AI.run(MODEL, payload);
+  } catch (error) {
+    callError = error;
+  }
+  const { text: draft } = extractText(result);
+  if (callError || !draft) {
+    const diagnostics = buildDiagnostics({
       model: MODEL,
-      taskType,
-      generatedAt: new Date().toISOString(),
-      status: "AI_DRAFT_REQUIRES_HUMAN_REVIEW",
-      verified: false,
-      sent: false,
-      externalActionsTaken: false,
-      disclaimer: "AI nacrt nije nezavisno proverena činjenica. Pregledaj dokaze i preporuke pre upotrebe.",
-      draft
+      maxTokensRequested: payload.max_completion_tokens,
+      result,
+      error: callError,
+      redact: [expectedToken, providedToken, systemPrompt, userPrompt, title, brief, evidence]
     });
-  } catch {
-    // Do not expose provider internals, prompts, or request content.
     return json({
-      error: "Workers AI zahtev nije uspeo. Proveri Cloudflare binding, model i besplatnu kvotu; nije izvršena spoljna radnja."
+      ok: false,
+      code: "AI_EMPTY_OUTPUT",
+      error: "AI model nije vratio upotrebljiv tekst. Nacrt nije kreiran.",
+      diagnosticCode: callError ? "AI_MODEL_CALL_FAILED" : "AI_MODEL_EMPTY_OUTPUT",
+      diagnostics
     }, 502);
   }
+  return json({
+    ok: true,
+    engine: "workers-ai",
+    model: MODEL,
+    taskType,
+    generatedAt: new Date().toISOString(),
+    status: "AI_DRAFT_REQUIRES_HUMAN_REVIEW",
+    verified: false,
+    sent: false,
+    externalActionsTaken: false,
+    disclaimer: "AI nacrt nije nezavisno proverena činjenica. Pregledaj dokaze i preporuke pre upotrebe.",
+    draft
+  });
+
 }
 
 function boundedText(value, limit) {
   return typeof value === "string" ? value.trim().slice(0, limit) : "";
-}
-
-function extractText(result) {
-  const candidates = [
-    result?.response,
-    result?.result?.response,
-    result?.output_text,
-    result?.generated_text,
-    result?.text,
-    result?.choices?.[0]?.message?.content,
-    result?.result?.choices?.[0]?.message?.content,
-    result?.output?.[0]?.content,
-    result?.result?.output_text
-  ];
-  for (const candidate of candidates) {
-    const text = textFromCandidate(candidate);
-    if (text) return text;
-  }
-  return "";
-}
-
-function textFromCandidate(value, depth = 0) {
-  if (depth > 4 || value == null) return "";
-  if (typeof value === "string") return value.trim();
-  if (Array.isArray(value)) {
-    return value.map(item => textFromCandidate(item, depth + 1)).filter(Boolean).join("\n").trim();
-  }
-  if (typeof value !== "object") return "";
-  // Some inference responses wrap text in content blocks rather than a single string.
-  for (const key of ["text", "content", "response", "output_text", "generated_text"]) {
-    const text = textFromCandidate(value[key], depth + 1);
-    if (text) return text;
-  }
-  return "";
-}
-
-function describeResponseShape(result) {
-  if (result == null) return { resultType: String(result) };
-  if (typeof result !== "object") return { resultType: typeof result };
-  const keys = Object.keys(result).slice(0, 30);
-  const shape = { resultType: Array.isArray(result) ? "array" : "object", topLevelKeys: keys };
-  for (const key of ["response", "output_text", "generated_text", "text", "content", "result"]) {
-    if (!(key in result)) continue;
-    const value = result[key];
-    shape[key] = {
-      type: value === null ? "null" : Array.isArray(value) ? "array" : typeof value,
-      ...(typeof value === "string" ? { length: value.length } : {}),
-      ...(Array.isArray(value) ? { length: value.length } : {}),
-      ...(value && typeof value === "object" && !Array.isArray(value) ? { keys: Object.keys(value).slice(0, 20) } : {})
-    };
-  }
-  if (Array.isArray(result.choices)) {
-    shape.choicesCount = result.choices.length;
-    const message = result.choices[0]?.message;
-    if (message && typeof message === "object") {
-      shape.firstChoiceMessageKeys = Object.keys(message).slice(0, 20);
-      const value = message.content;
-      shape.firstChoiceContent = {
-        type: value === null ? "null" : Array.isArray(value) ? "array" : typeof value,
-        ...(typeof value === "string" ? { length: value.length } : {}),
-        ...(Array.isArray(value) ? { length: value.length } : {})
-      };
-    }
-  }
-  return shape;
 }
 
 function json(data, status = 200, extraHeaders = {}) {

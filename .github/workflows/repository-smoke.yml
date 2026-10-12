@@ -5,10 +5,12 @@ on:
     branches:
       - phase-0-1-safe-research-foundation
       - dev-seo-audit-v2
+      - fix/ai-structured-diagnostics
   pull_request:
     branches:
       - main
       - feature/phase-1-arbeitnow-integration
+      - dev-seo-audit-v2
 
 permissions:
   contents: read
@@ -23,5 +25,5 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Run repository smoke tests
-        run: node --test tests/repository-smoke.test.mjs tests/seo-audit-v2.test.mjs
+      - name: Run repository and AI diagnostics tests
+        run: node --test tests/repository-smoke.test.mjs tests/seo-audit-v2.test.mjs tests/ai-diagnostics.test.mjs
