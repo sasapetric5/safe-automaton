@@ -5,6 +5,7 @@ on:
     branches:
       - phase-0-1-safe-research-foundation
       - dev-seo-audit-v2
+      - fix/ai-structured-diagnostics
   pull_request:
     branches:
       - main
