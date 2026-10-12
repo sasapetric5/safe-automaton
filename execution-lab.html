@@ -64,7 +64,32 @@ if(type==='research') body='## Sažetak\nNa osnovu unetog brief-a, ovo je počet
 if(type==='qa') body='## Preduslovi\n- Okruženje i verzija aplikacije zabeleženi\n- Testni podaci bez tajni i stvarnih ličnih podataka\n\n## Test slučajevi\n1. Основни успешан сценарио — забележи очекивано и стварно понашање\n2. Неважећи и празни уноси\n3. Граничне вредности и дугачак садржај\n4. Грешка мреже / недоступан извор ако је применљиво\n5. Мобилни приказ и приступачност\n6. Потврда да нема нежељених спољних радњи\n\n## Резултати тестирања\nЗа сваки тест попуни: кораци, очекивано, стварно, PASS/FAIL, доказ. Овај план није доказ да су тестови већ извршени.';
 if(type==='scope') body='## Predloženi obim\nPre početka precizirati isporuke i isključenja iz obima.\n\n## Faze\n1. Potvrda zahteva i pristupa\n2. Izrada i međuprovera\n3. Testiranje i ispravke\n4. Pregled klijenta i dogovorene izmene\n5. Konačna isporuka\n\n## Kriterijumi prihvatanja\n- Svaka isporuka ima proverljiv kriterijum\n- Nejasne stavke dobijaju pisano pojašnjenje pre rada\n- Rok se potvrđuje tek nakon provere zavisnosti\n- Cena, broj revizija, vlasništvo i način plaćanja dogovaraju se unapred\n\n## Rizici i pretpostavke\n'+(facts||'Nisu dostavljene proverene činjenice ili ograničenja.')+'\n\n## Otvorena pitanja\n'+brief;
 return '# '+title+'\n\n**Vrsta rezultata:** '+labels[type]+'\n**Datum izrade:** '+new Date().toISOString().slice(0,10)+'\n**Interni rok:** '+(deadline||'Nije definisan')+'\n**Izvor:** '+(source||'Nije naveden')+'\n\n## Zahtev / brief\n'+brief+'\n\n'+body+'\n\n## Ograničenja i neizvesnosti\n'+(facts||'Nisu navedene proverene činjenice; proveriti pre isporuke.')+'\n\n## Status\nRadni nacrt generisan lokalnim šablonom. Nije nezavisno provereno i nije poslato klijentu. QA kućice se moraju označiti tek nakon stvarne provere.\n';}
-function build(){activeRecordId=null;const title=$('title').value.trim(),brief=$('brief').value.trim();if(!title||!brief){alert('Unesi naziv zadatka i brief.');return}const source=$('source').value.trim();if(source){try{const u=new URL(source);if(!['http:','https:'].includes(u.protocol))throw Error();}catch{alert('URL mora biti validan HTTP ili HTTPS link.');return}}artifact=template($('taskType').value,title,brief,source,$('deadline').value,$('facts').value.trim());$('output').textContent=artifact;$('copy').disabled=false;$('download').disabled=false;$('save').disabled=false;getChecks().forEach(x=>x.checked=false);qa();$('saved').textContent='Radni nacrt napravljen lokalno. Nijedan test nije automatski izvršen.'}
+function build(){
+  if ($('build').disabled) return;
+  const title=$('title').value.trim(), brief=$('brief').value.trim();
+  if(!title || !brief){
+    $('saved').style.color='var(--bad)';
+    $('saved').textContent='Greška: Unesi naziv zadatka i brief pre izrade šablona.';
+    return;
+  }
+  const source=$('source').value.trim();
+  if(source){
+    try{const u=new URL(source);if(!['http:','https:'].includes(u.protocol))throw Error();}
+    catch{$('saved').style.color='var(--bad)';$('saved').textContent='Greška: URL mora biti validan HTTP ili HTTPS link.';return;}
+  }
+  $('build').disabled=true;
+  try{
+    artifact=template($('taskType').value,title,brief,source,$('deadline').value,$('facts').value.trim());
+    activeRecordId=null;$('output').textContent=artifact;
+    $('copy').disabled=$('download').disabled=$('save').disabled=false;
+    getChecks().forEach(x=>x.checked=false);qa();
+    $('saved').style.color='var(--accent)';
+    $('saved').textContent='Radni nacrt napravljen lokalno. Nijedan test nije automatski izvršen.';
+  }catch(error){
+    $('saved').style.color='var(--bad)';
+    $('saved').textContent='Izrada nacrta nije uspela: '+(error instanceof Error?error.message:'nepoznata greška')+'. Proveri unos i pokušaj ponovo.';
+  }finally{$('build').disabled=false;}
+}
 function blobDownload(name,text,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function renderRecords(){$('records').innerHTML=records.length?records.slice().reverse().map((r,i)=>'<div class="status"><strong>'+esc(r.title)+'</strong> · '+esc(r.createdAt)+' · QA '+esc(r.qaCount)+'/'+esc(r.qaTotal)+' <button data-open="'+esc(r.id)+'">Otvori</button></div>').join(''):'Nema sačuvanih zapisa.'}
 $('build').addEventListener('click',build);
@@ -177,12 +202,84 @@ $('aiDraft').addEventListener('click',async()=>{
     $('auditStatus').textContent='AI nacrt nije napravljen: '+message+diagnostic+'. Model nije pozvan ako je endpoint odbio zahtev pre inference-a.';
   }finally{$('aiDraft').disabled=false;}
 });
-$('reset').addEventListener('click',()=>{['title','brief','source','deadline','facts','aiToken'].forEach(id=>$(id).value='');artifact='';activeRecordId=null;$('output').textContent='Forma je očišćena.';$('copy').disabled=$('download').disabled=$('save').disabled=true;getChecks().forEach(x=>x.checked=false);qa()});
+$('reset').addEventListener('click',()=>{
+  if($('reset').disabled)return;
+  $('reset').disabled=true;
+  try{
+    ['title','brief','source','deadline','facts','aiToken'].forEach(id=>$(id).value='');
+    artifact='';activeRecordId=null;$('output').textContent='Forma je očišćena.';
+    $('copy').disabled=$('download').disabled=$('save').disabled=true;
+    $('saved').textContent='';$('saved').style.color='var(--muted)';
+    getChecks().forEach(x=>x.checked=false);qa();
+    $('auditStatus').textContent='Forma je očišćena. Nijedna spoljna radnja nije izvršena.';
+  }catch(error){
+    $('saved').style.color='var(--bad)';$('saved').textContent='Čišćenje forme nije uspelo: '+(error instanceof Error?error.message:'nepoznata greška')+'.';
+  }finally{$('reset').disabled=false;}
+});
+});
 getChecks().forEach(x=>x.addEventListener('change',qa));
-$('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(artifact);$('saved').textContent='Rezultat kopiran.'}catch{$('saved').textContent='Kopiranje nije dozvoljeno u ovom kontekstu; koristi izvoz Markdown.'}});
-$('download').addEventListener('click',()=>{if(artifact)blobDownload('safe-automaton-radni-rezultat.md',artifact,'text/markdown;charset=utf-8')});
-$('save').addEventListener('click',()=>{if(!artifact)return;const now=new Date().toISOString(),title=$('title').value.trim(),existing=(activeRecordId&&records.find(r=>r.id===activeRecordId))||records.slice().reverse().find(r=>r.title===title&&r.artifact===artifact);const rec={id:existing?.id||(crypto.randomUUID?crypto.randomUUID():String(Date.now())),title,createdAt:existing?.createdAt||now,updatedAt:existing?now:undefined,artifact,qaCount:getChecks().filter(x=>x.checked).length,qaTotal:getChecks().length,qa:getChecks().map(x=>({label:x.parentElement.textContent.trim(),checked:x.checked})),status:'DRAFT_NOT_SENT'};if(existing){Object.assign(existing,rec);activeRecordId=existing.id}else{records.push(rec);activeRecordId=rec.id}try{localStorage.setItem(KEY,JSON.stringify(records));$('saved').textContent=existing?'Postojeći nacrt ažuriran; duplikat nije napravljen. Status: nije poslato.':'Sačuvano lokalno. Status: nacrt, nije poslato.';renderRecords()}catch{$('saved').textContent='Čuvanje nije uspelo. Izvezi rezultat kao Markdown.'}});
-$('records').addEventListener('click',e=>{const b=e.target.closest('button[data-open]');if(!b)return;const r=records.find(x=>x.id===b.dataset.open);if(r){activeRecordId=r.id;artifact=r.artifact;$('output').textContent=artifact;$('title').value=r.title;$('copy').disabled=$('download').disabled=$('save').disabled=false;$('saved').textContent='Učitano iz lokalne evidencije; nacrt nije poslat.';getChecks().forEach((x,i)=>x.checked=Boolean(r.qa?.[i]?.checked));qa()}});
-$('exportJson').addEventListener('click',()=>blobDownload('safe-automaton-execution-records.json',JSON.stringify(records,null,2),'application/json;charset=utf-8'));
+$('copy').addEventListener('click',async()=>{
+  if(!artifact || $('copy').disabled) return;
+  $('copy').disabled=true;
+  try{
+    await navigator.clipboard.writeText(artifact);
+    $('saved').style.color='var(--accent)';$('saved').textContent='Rezultat uspešno kopiran u clipboard.';
+  }catch{
+    $('saved').style.color='var(--bad)';$('saved').textContent='Kopiranje nije dozvoljeno u ovom kontekstu; koristi izvoz Markdown.';
+  }finally{$('copy').disabled=!artifact;}
+});
+$('download').addEventListener('click',()=>{
+  if(!artifact){$('saved').style.color='var(--bad)';$('saved').textContent='Nema rezultata za izvoz. Prvo izradi šablon ili nacrt.';return;}
+  if($('download').disabled)return;
+  $('download').disabled=true;
+  try{
+    blobDownload('safe-automaton-radni-rezultat.md',artifact,'text/markdown;charset=utf-8');
+    $('saved').style.color='var(--accent)';$('saved').textContent='Markdown fajl je pripremljen za preuzimanje.';
+  }catch(error){
+    $('saved').style.color='var(--bad)';$('saved').textContent='Izvoz nije uspeo: '+(error instanceof Error?error.message:'nepoznata greška')+'. Pokušaj ponovo.';
+  }finally{$('download').disabled=false;}
+});
+$('save').addEventListener('click',()=>{
+  if(!artifact){$('saved').style.color='var(--bad)';$('saved').textContent='Nema rezultata za čuvanje. Prvo izradi šablon ili nacrt.';return;}
+  if($('save').disabled)return;
+  $('save').disabled=true;
+  try{
+    const now=new Date().toISOString(),title=$('title').value.trim();
+    const existing=(activeRecordId&&records.find(r=>r.id===activeRecordId))||records.slice().reverse().find(r=>r.title===title&&r.artifact===artifact);
+    const rec={id:existing?.id||(crypto.randomUUID?crypto.randomUUID():String(Date.now())),title,createdAt:existing?.createdAt||now,updatedAt:existing?now:undefined,artifact,qaCount:getChecks().filter(x=>x.checked).length,qaTotal:getChecks().length,qa:getChecks().map(x=>({label:x.parentElement.textContent.trim(),checked:x.checked})),status:'DRAFT_NOT_SENT'};
+    const nextRecords=existing?records.map(r=>r.id===existing.id?{...r,...rec}:r):[...records,rec];
+    localStorage.setItem(KEY,JSON.stringify(nextRecords));records=nextRecords;activeRecordId=rec.id;
+    $('saved').style.color='var(--accent)';
+    $('saved').textContent=existing?'Postojeći nacrt ažuriran; duplikat nije napravljen. Status: nije poslato.':'Sačuvano lokalno. Status: nacrt, nije poslato.';
+    renderRecords();
+  }catch(error){
+    $('saved').style.color='var(--bad)';$('saved').textContent='Čuvanje nije uspelo: '+(error instanceof Error?error.message:'nepoznata greška')+'. Izvezi rezultat kao Markdown.';
+  }finally{$('save').disabled=!artifact;}
+});
+$('records').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-open]');
+  if(!b||b.disabled)return;
+  b.disabled=true;
+  try{
+    const r=records.find(x=>x.id===b.dataset.open);
+    if(!r){$('saved').style.color='var(--bad)';$('saved').textContent='Zapis nije pronađen u lokalnoj evidenciji. Osveži listu i pokušaj ponovo.';return;}
+    activeRecordId=r.id;artifact=r.artifact;$('output').textContent=artifact;$('title').value=r.title;
+    $('copy').disabled=$('download').disabled=$('save').disabled=!Boolean(artifact);
+    $('saved').style.color='var(--accent)';$('saved').textContent='Učitano iz lokalne evidencije; nacrt nije poslat.';
+    getChecks().forEach((x,i)=>x.checked=Boolean(r.qa?.[i]?.checked));qa();
+  }catch(error){
+    $('saved').style.color='var(--bad)';$('saved').textContent='Otvaranje zapisa nije uspelo: '+(error instanceof Error?error.message:'nepoznata greška')+'.';
+  }finally{b.disabled=false;}
+});
+$('exportJson').addEventListener('click',()=>{
+  const button=$('exportJson');if(button.disabled)return;button.disabled=true;
+  try{
+    blobDownload('safe-automaton-execution-records.json',JSON.stringify(records,null,2),'application/json;charset=utf-8');
+    $('saved').style.color='var(--accent)';$('saved').textContent='JSON evidencija je pripremljena za preuzimanje.';
+  }catch(error){
+    $('saved').style.color='var(--bad)';$('saved').textContent='Izvoz JSON evidencije nije uspeo: '+(error instanceof Error?error.message:'nepoznata greška')+'.';
+  }finally{button.disabled=false;}
+});
+;
 renderRecords();renderProcedure();qa();
 </script></body></html>
