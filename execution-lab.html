@@ -95,6 +95,65 @@ function renderRecords(){$('records').innerHTML=records.length?records.slice().r
 $('build').addEventListener('click',build);
 $('taskType').addEventListener('change',()=>{$('audit').hidden=$('taskType').value!=='seo';renderProcedure();});
 function formatSeoAudit(data,title='SEO provera'){
+  if(data?.status==='success'&&data.seo_metrics&&typeof data.seo_metrics==='object'){
+    const m=data.seo_metrics,t=data.timing||{},scope=data.audit_scope||{};
+    const signals=[];
+    if(!m.title)signals.push('Nedostaje <title> u preuzetom HTML-u.');
+    else if(m.title_length<30||m.title_length>60)signals.push('Dužina title-a je '+m.title_length+' znakova; proveri prikaz i nameru pretrage.');
+    if(!m.meta_description)signals.push('Meta description nije pronađen u preuzetom HTML-u.');
+    else if(m.meta_description_count>1)signals.push('Pronađeno je '+m.meta_description_count+' meta description oznaka; proveri da li su duplikati namerni.');
+    if(m.h1_tags?.length!==1)signals.push('Pronađeno H1 naslova: '+(Array.isArray(m.h1_tags)?m.h1_tags.length:'nepoznato')+'; proveri semantiku stranice.');
+    if((m.images_missing_alt||0)>0)signals.push('Slike bez alt atributa: '+m.images_missing_alt+' od '+m.total_images+'; ručno razlikuj informativne i dekorativne slike.');
+    if(!m.canonical_url)signals.push('Canonical URL nije pronađen u preuzetom HTML-u.');
+    if(/noindex/i.test(m.robots_meta||''))signals.push('Robots meta sadrži noindex; potvrdi da je to namerno.');
+    const lines=[
+      '# SEO Evidence Audit — '+title,'',
+      '**Vreme provere:** '+(data.audit_timestamp||'nije navedeno'),
+      '**Zatraženi URL:** '+(data.target_url||'nije naveden'),
+      '**Konačni URL:** '+(data.final_url||'nije naveden'),
+      '**HTTP status ciljne stranice:** '+(m.http_status??'nije naveden'),
+      '**Izvor dokaza:** '+(scope.evidence_source||'initial_html'),
+      '**JavaScript izvršen:** '+(scope.javascript_executed?'da':'ne'),
+      '**Renderovani DOM proveren:** '+(scope.rendered_dom_checked?'da':'ne'),
+      '**Povezane stranice pretražene:** '+(scope.linked_pages_crawled?'da':'ne'),
+      '**SHA-256 HTML-a:** '+(data.content_hash||'nije dostupan'),
+      '**Preusmeravanja:** '+(data.redirect_count??'nije navedeno'),
+      '',
+      '## Izmerene SEO metrike',
+      '- Title: '+(m.title||'nije pronađen'),
+      '- Dužina title-a: '+(m.title_length??'nije navedena'),
+      '- Meta description: '+(m.meta_description||'nije pronađen'),
+      '- Broj meta description oznaka: '+(m.meta_description_count??'nije navedeno'),
+      '- H1 naslovi: '+(Array.isArray(m.h1_tags)&&m.h1_tags.length?m.h1_tags.join(' | '):'nijedan pronađen'),
+      '- Broj H2 oznaka: '+(m.h2_count??'nije navedeno'),
+      '- Slike sa alt atributom: '+(m.images_with_alt??'nije navedeno')+'/'+(m.total_images??'nije navedeno'),
+      '- Slike bez alt atributa: '+(m.images_missing_alt??'nije navedeno'),
+      '- Canonical URL: '+(m.canonical_url||'nije pronađen'),
+      '- Robots meta: '+(m.robots_meta||'nije pronađen'),
+      '- Veličina HTML-a: '+(m.html_characters??'nije navedena')+' znakova',
+      '',
+      '## Signali za ljudsku proveru',
+      ...(signals.length?signals.map((x,i)=>(i+1)+'. '+x):['Nijedan od osnovnih signala za proveru nije aktiviran na osnovu ovih metrika. To nije potvrda da je cela stranica SEO-ispravna.']),
+      '',
+      '## Trajanje obrade',
+      '- Preuzimanje: '+(t.fetch_duration_ms??'nije navedeno')+' ms',
+      '- Parsiranje: '+(t.parse_duration_ms??'nije navedeno')+' ms',
+      '- Analiza: '+(t.analysis_duration_ms??'nije navedeno')+' ms',
+      '- Ukupno: '+(t.audit_duration_ms??'nije navedeno')+' ms',
+      '',
+      '## Ograničenja',
+      '- Audit analizira samo početni HTML; JavaScript nije izvršen.',
+      '- Renderovani DOM i povezane stranice nisu provereni.',
+      '- Signali su indikatori za ljudsku proveru, a ne automatska potvrda SEO greške.',
+      '- Rezultat nije automatski primenjen niti poslat klijentu.',
+      '',
+      '## Status',
+      'Prikupljeni su stvarni tehnički dokazi. Potrebni su ljudska provera i, gde je relevantno, vizuelna provera u pregledaču.'
+    ];
+    return lines.join('\\n');
+  }
+  const findings=Array.isArray(data.findings)?data.findings:[];
+
   const findings=Array.isArray(data.findings)?data.findings:[];
   const actionable=findings.filter(f=>f.status==='FAIL'||f.status==='WARN')
     .sort((a,b)=>({HIGH:0,MEDIUM:1,REVIEW:2,INFO:3}[a.priority]??4)-({HIGH:0,MEDIUM:1,REVIEW:2,INFO:3}[b.priority]??4));
@@ -149,15 +208,31 @@ $('audit').addEventListener('click',async()=>{
   $('audit').disabled=true;$('auditStatus').textContent='Prikupljam javne HTML dokaze…';
   try{
     const response=await fetch('/api/seo-audit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:source})});
-    const data=await response.json();
-    if(!response.ok||!data.ok)throw new Error(data.error||'SEO audit nije uspeo.');
+    const contentType=response.headers.get('content-type')||'';
+    if(!contentType.toLowerCase().includes('application/json')){
+      throw new Error('SEO endpoint nije vratio JSON (HTTP '+response.status+', Content-Type: '+(contentType||'nije naveden')+'). Proveri runtime/WAF odgovor; audit nije napravljen.');
+    }
+    let data;
+    try{data=await response.json();}
+    catch{throw new Error('SEO endpoint je vratio neispravan JSON (HTTP '+response.status+'). Audit nije napravljen.');}
+    if(!response.ok||data?.status==='error'||(data?.status!=='success'&&!data?.ok)){
+      const detail=data?.error_details||{};
+      const parts=[
+        data?.error_message||data?.error||'SEO audit nije uspeo.',
+        data?.error_type?'Kod: '+data.error_type:'',
+        detail.http_status?'HTTP cilja: '+detail.http_status:'',
+        detail.reason?'Detalj: '+detail.reason:''
+      ].filter(Boolean);
+      throw new Error(parts.join(' · ')+' (HTTP '+response.status+').');
+    }
     artifact=formatSeoAudit(data,$('title').value.trim()||'SEO provera');
     activeRecordId=null;
     $('output').textContent=artifact;
     $('copy').disabled=$('download').disabled=$('save').disabled=false;
     getChecks().forEach(x=>x.checked=false);qa();
-    $('saved').textContent='SEO dokazi prikupljeni. QA provere su resetovane; pregledaj svaki nalaz pre isporuke.';
-    $('auditStatus').textContent='Audit završen: HTTP '+data.httpStatus+' · '+data.summary.total+' nalaza. Proveri upozorenja i ograničenja.';
+    $('saved').textContent='SEO dokazi prikupljeni. QA provere su resetovane; pregledaj signale i ograničenja.';
+    const metrics=data.seo_metrics||{};
+    $('auditStatus').textContent='Audit završen: HTTP '+(metrics.http_status??data.httpStatus??'nepoznat')+' · '+(data.content_hash?'SHA-256 potvrđen':'hash nije dostupan')+'. Proveri signale i ograničenja.';
   }catch(error){
     $('auditStatus').textContent='Provera nije završena: '+(error instanceof Error?error.message:'nepoznata greška')+'. Nije napravljen lažno uspešan izveštaj.';
   }finally{$('audit').disabled=false;}
