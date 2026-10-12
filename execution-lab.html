@@ -153,8 +153,6 @@ function formatSeoAudit(data,title='SEO provera'){
     return lines.join('\n');
   }
   const findings=Array.isArray(data.findings)?data.findings:[];
-
-  const findings=Array.isArray(data.findings)?data.findings:[];
   const actionable=findings.filter(f=>f.status==='FAIL'||f.status==='WARN')
     .sort((a,b)=>({HIGH:0,MEDIUM:1,REVIEW:2,INFO:3}[a.priority]??4)-({HIGH:0,MEDIUM:1,REVIEW:2,INFO:3}[b.priority]??4));
   const targetUrl=data.finalUrl||data.requestedUrl||'';
