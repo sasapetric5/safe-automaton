@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - phase-0-1-safe-research-foundation
+      - dev-seo-audit-v2
   pull_request:
     branches:
       - main
+      - feature/phase-1-arbeitnow-integration
 
 permissions:
   contents: read
@@ -22,4 +24,4 @@ jobs:
         with:
           node-version: 22
       - name: Run repository smoke tests
-        run: node --test tests/repository-smoke.test.mjs
+        run: node --test tests/repository-smoke.test.mjs tests/seo-audit-v2.test.mjs
