@@ -65,3 +65,5 @@ Razvojni prototip za istraživanje javnih poslovnih prilika, procenu izvodljivos
 ## Лиценца
 
 Није дефинисана у овој почетној верзији.
+
+<!-- Preview/production deployment verification marker: 2026-10-12 -->
