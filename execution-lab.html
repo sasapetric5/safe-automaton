@@ -191,8 +191,17 @@ $('aiDraft').addEventListener('click',async()=>{
       const contentType=response.headers.get('content-type')||'';
       if(!contentType.includes('application/json'))throw new Error('Server nije vratio JSON (HTTP '+response.status+').');
       const data=await response.json();
-      if(data.diagnosticCode==='AI_ENABLE_FLAG_MISSING_AT_RUNTIME'||data.error==='AI_DISABLED'){
-        fallbackReason='AI nije omogućen u Cloudflare runtime okruženju ['+(data.diagnosticCode||data.error)+'].';
+      if((typeof data.diagnosticCode==='string'&&data.diagnosticCode.startsWith('AI_ENABLE_FLAG_'))||data.error==='AI_DISABLED'){
+        const bindings=data.runtimeBindings&&typeof data.runtimeBindings==='object'?data.runtimeBindings:{};
+        const yesNo=value=>value===true?'prisutan':value===false?'odsutan':'nepoznat';
+        const runtimeDetails=[
+          data.runtimeHost?'Host: '+String(data.runtimeHost):'',
+          'env: '+yesNo(bindings.envObjectPresent),
+          'aktivaciona promenljiva: '+yesNo(bindings.enableFlagPresent),
+          'AI token binding: '+yesNo(bindings.tokenBindingPresent),
+          'Workers AI binding: '+yesNo(bindings.aiBindingPresent)
+        ].filter(Boolean).join('; ');
+        fallbackReason='AI nije aktiviran u Cloudflare runtime-u ['+(data.diagnosticCode||data.error)+']. '+(data.detail?String(data.detail)+' ':'')+(runtimeDetails?'Dijagnostika: '+runtimeDetails+'.':'');
       }else if(!response.ok||!data.ok){
         throw new Error(data.detail||data.error||'AI nacrt nije uspeo (HTTP '+response.status+').');
       }else{
