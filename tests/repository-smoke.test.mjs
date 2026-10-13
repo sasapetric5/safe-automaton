@@ -55,7 +55,7 @@ test('Execution Lab labels templates and QA as local/manual, not verified AI exe
   const html = await source('execution-lab.html');
   assert.match(html, /AI generisanje je opciono i podrazumevano isključeno/i);
   assert.match(html, /Ove kućice nisu automatski dokazi/);
-  assert.match(html, /ne pokreće proizvoljan kod/);
+  assert.match(html, /ne pokreće AI model/);
   assert.match(html, /safe-automaton-execution-lab-v1/);
 });
 
@@ -364,11 +364,11 @@ test('SEO Evidence Audit report ranks actionable findings and keeps evidence sco
 
 test('SEO audit endpoint enforces method, origin and strict host allowlist without fetching blocked targets', async () => {
   const api = await source('functions/api/seo-audit.js');
-  const context = { URL, Response, AbortSignal, TextDecoder, Uint8Array, Date, fetch: () => { throw new Error('fetch must not run for blocked requests'); } };
+  const context = { URL, Response, AbortSignal, TextDecoder, Uint8Array, Date, performance, crypto, fetch: () => { throw new Error('fetch must not run for blocked requests'); } };
   vm.createContext(context);
-  vm.runInContext(api.replace('export async function onRequest', 'async function onRequest') + '\nglobalThis.onRequest=onRequest;', context);
+  vm.runInContext(api.replace('export async function onRequest', 'async function onRequest').replace('export function createSeoAuditHandler', 'function createSeoAuditHandler') + '\nglobalThis.onRequest=onRequest;', context);
   const handler = context.onRequest;
-  const get = await handler({request:new Request('https://safe-automaton.pages.dev/api/seo-audit',{method:'GET'} )});
+  const get = await handler({request:new Request('https://safe-automaton.pages.dev/api/seo-audit',{method:'GET'})});
   assert.equal(get.status,405);
   const foreignOrigin = await handler({request:new Request('https://safe-automaton.pages.dev/api/seo-audit',{method:'POST',headers:{Origin:'https://evil.example','Content-Type':'application/json'},body:JSON.stringify({url:'https://savremenikoreni.com/'})})});
   assert.equal(foreignOrigin.status,403);
@@ -376,21 +376,24 @@ test('SEO audit endpoint enforces method, origin and strict host allowlist witho
   assert.equal(blockedHost.status,400);
 });
 
-test('SEO audit endpoint returns evidence scope and findings for allowed HTML without claiming browser rendering', async () => {
+test('SEO audit endpoint returns strict v2 evidence, metrics and content hash without claiming browser rendering', async () => {
   const api = await source('functions/api/seo-audit.js');
   const html = '<!doctype html><html lang="sr"><head><title>Test naslov stranice koji je dovoljno opisni</title><meta name="description" content="Opis stranice za testiranje sadržaja i metapodataka"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="canonical" href="https://savremenikoreni.com/"></head><body><h1>Test naslov</h1><img src="/photo.jpg" alt="Opis fotografije"><a href="/kontakt">Kontakt</a></body></html>';
-  const context = { URL, Response, AbortSignal, TextDecoder, Uint8Array, Date, fetch: async (url, options) => new Response(html,{status:200,headers:{'Content-Type':'text/html; charset=utf-8'}}) };
+  const context = { URL, Response, AbortSignal, TextDecoder, Uint8Array, Date, performance, crypto, fetch: async () => new Response(html,{status:200,headers:{'Content-Type':'text/html; charset=utf-8'}}) };
   vm.createContext(context);
-  vm.runInContext(api.replace('export async function onRequest', 'async function onRequest') + '\nglobalThis.onRequest=onRequest;', context);
+  vm.runInContext(api.replace('export async function onRequest', 'async function onRequest').replace('export function createSeoAuditHandler', 'function createSeoAuditHandler') + '\nglobalThis.onRequest=onRequest;', context);
   const response = await context.onRequest({request:new Request('https://safe-automaton.pages.dev/api/seo-audit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:'https://savremenikoreni.com/'})})});
   assert.equal(response.status,200);
   const data = await response.json();
-  assert.equal(data.ok,true);
-  assert.equal(data.auditScope.javascriptExecuted,false);
-  assert.equal(data.auditScope.renderedDomChecked,false);
-  assert.ok(data.findings.some(f=>f.id==='title'));
-  assert.ok(data.findings.some(f=>f.id==='images'));
-  assert.ok(data.limitations.some(s=>s.includes('JavaScript-renderovani sadržaj')));
+  assert.equal(data.status,'success');
+  assert.equal(data.audit_scope.javascript_executed,false);
+  assert.equal(data.audit_scope.rendered_dom_checked,false);
+  assert.equal(typeof data.content_hash,'string');
+  assert.equal(data.content_hash.length,64);
+  assert.equal(data.seo_metrics.title,'Test naslov stranice koji je dovoljno opisni');
+  assert.equal(data.seo_metrics.total_images,1);
+  assert.ok(Number.isFinite(data.timing.audit_duration_ms));
+  assert.ok(!('error_type' in data));
 });
 
 test('Execution Lab selects a task-specific skill procedure and QA checklist without claiming autonomous execution', async () => {

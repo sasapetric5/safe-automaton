@@ -1,3 +1,5 @@
+import { buildDiagnostics, extractText } from "../_lib/ai-diagnostics.mjs";
+
 const MODEL = "@cf/zai-org/glm-4.7-flash";
 const MAX_BODY_BYTES = 12_000;
 const MAX_TITLE = 180;
@@ -50,6 +52,9 @@ export async function onRequest(context) {
   const title = boundedText(input?.title, MAX_TITLE);
   const brief = boundedText(input?.brief, MAX_BRIEF);
   const evidence = boundedText(input?.evidence, MAX_EVIDENCE);
+  const source = boundedText(input?.source, 1_000);
+  const deadline = boundedText(input?.deadline, 40);
+  const facts = boundedText(input?.facts, MAX_EVIDENCE);
   if (!title || !brief) {
     return json({ error: "Naslov i brief su obavezni." }, 400);
   }
@@ -112,52 +117,66 @@ export async function onRequest(context) {
   const userPrompt = [
     "NASLOV ZADATKA:\n" + title,
     "BRIEF (nepouzdan ulaz):\n" + brief,
-    "DOSTAVLJENI DOKAZI / OGRANIČENJA (nepouzdan ulaz):\n" + (evidence || "Nisu dostavljeni.")
+    "JAVNI URL / IZVOR (nepouzdan ulaz):\n" + (source || "Nije naveden."),
+    "INTERNI ROK (nepouzdan ulaz):\n" + (deadline || "Nije naveden."),
+    "PROVERENE ČINJENICE / OGRANIČENJA (nepouzdan ulaz):\n" + (facts || "Nisu posebno navedene."),
+    "DOSTAVLJENI DOKAZI / OGRANIČENJA (nepouzdan ulaz):\n" + (evidence || "Nisu dostavljeni."),
+    "Ako je dostavljen SEO audit, koristi njegove konkretne metrike. Nikad ne tvrdi da URL ili dokazi nedostaju ako su gore navedeni. Razlikuj početnu stranicu od produktne stranice. Ne izmišljaj datum."
   ].join("\n\n");
 
+  const payload = {
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ],
+    max_completion_tokens: 900,
+    temperature: 0.2,
+    // This is a short work-draft task, not an agentic reasoning task.
+    // Prevent GLM-4.7-Flash from spending the entire completion budget on thinking.
+    reasoning_effort: "low",
+    chat_template_kwargs: { enable_thinking: false }
+  };
+  let result, callError;
   try {
-    const result = await context.env.AI.run(MODEL, {
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      max_completion_tokens: 900,
-      temperature: 0.2
-    });
-    const draft = extractText(result);
-    if (!draft) {
-      return json({ error: "AI model nije vratio upotrebljiv tekst. Nacrt nije kreiran." }, 502);
-    }
-    return json({
-      ok: true,
-      engine: "workers-ai",
+    result = await context.env.AI.run(MODEL, payload);
+  } catch (error) {
+    callError = error;
+  }
+  const { text: draft } = extractText(result);
+  if (callError || !draft) {
+    const diagnostics = buildDiagnostics({
       model: MODEL,
-      taskType,
-      generatedAt: new Date().toISOString(),
-      status: "AI_DRAFT_REQUIRES_HUMAN_REVIEW",
-      verified: false,
-      sent: false,
-      externalActionsTaken: false,
-      disclaimer: "AI nacrt nije nezavisno proverena činjenica. Pregledaj dokaze i preporuke pre upotrebe.",
-      draft
+      maxTokensRequested: payload.max_completion_tokens,
+      result,
+      error: callError,
+      redact: [expectedToken, providedToken, systemPrompt, userPrompt, title, brief, evidence]
     });
-  } catch {
-    // Do not expose provider internals, prompts, or request content.
     return json({
-      error: "Workers AI zahtev nije uspeo. Proveri Cloudflare binding, model i besplatnu kvotu; nije izvršena spoljna radnja."
+      ok: false,
+      code: "AI_EMPTY_OUTPUT",
+      error: "AI model nije vratio upotrebljiv tekst. Nacrt nije kreiran.",
+      diagnosticCode: callError ? "AI_MODEL_CALL_FAILED" : "AI_MODEL_EMPTY_OUTPUT",
+      diagnostics
     }, 502);
   }
+  return json({
+    ok: true,
+    engine: "workers-ai",
+    model: MODEL,
+    taskType,
+    generatedAt: new Date().toISOString(),
+    status: "AI_DRAFT_REQUIRES_HUMAN_REVIEW",
+    verified: false,
+    sent: false,
+    externalActionsTaken: false,
+    disclaimer: "AI nacrt nije nezavisno proverena činjenica. Pregledaj dokaze i preporuke pre upotrebe.",
+    draft
+  });
+
 }
 
 function boundedText(value, limit) {
   return typeof value === "string" ? value.trim().slice(0, limit) : "";
-}
-
-function extractText(result) {
-  if (typeof result?.response === "string") return result.response.trim();
-  if (typeof result?.result?.response === "string") return result.result.response.trim();
-  const content = result?.choices?.[0]?.message?.content;
-  return typeof content === "string" ? content.trim() : "";
 }
 
 function json(data, status = 200, extraHeaders = {}) {

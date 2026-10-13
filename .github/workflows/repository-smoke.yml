@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - phase-0-1-safe-research-foundation
+      - dev-seo-audit-v2
   pull_request:
     branches:
       - main
+      - feature/phase-1-arbeitnow-integration
 
 permissions:
   contents: read
@@ -21,5 +23,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Run repository smoke tests
-        run: node --test tests/repository-smoke.test.mjs
+      - name: Syntax-check Cloudflare Pages Functions
+        run: node --check functions/api/agent-run.js && node --check functions/api/scheduler.js && node --check functions/api/sandbox-check.js
+      - name: Run repository and AI diagnostics tests
+        run: node --test tests/repository-smoke.test.mjs tests/seo-audit-v2.test.mjs tests/ai-diagnostics.test.mjs tests/agent-run.test.mjs tests/gemini-key-pool.test.mjs tests/ai-failover.test.mjs tests/agent-policy.test.mjs tests/agent-skill-registry.test.mjs tests/agent-memory.test.mjs tests/inference-router.test.mjs tests/observability.test.mjs tests/task-scheduler.test.mjs tests/sandbox.test.mjs

@@ -20,7 +20,7 @@
 <div class="formrow"><div><label for="source">Javni izvor / URL (opciono)</label><input id="source" type="url" maxlength="1000" placeholder="https://..."></div><div><label for="deadline">Interni rok (opciono)</label><input id="deadline" type="date"></div></div>
 <label for="facts">Proverene činjenice / ograničenja</label><textarea id="facts" maxlength="4000" placeholder="Šta je zaista provereno? Šta nije poznato? Koje tehnologije ili uslovi su obavezni?"></textarea>
 <label for="aiToken">AI pristupni token (nije sačuvan)</label><input id="aiToken" type="password" autocomplete="off" maxlength="256" placeholder="Unesi Cloudflare tajnu SAFE_AUTOMATON_AI_TOKEN"><p class="small">Token se šalje samo ovom endpoint-u i ne čuva se u localStorage niti u radnom rezultatu. Ne stavljaj token u brief ili činjenice.</p>
-<div class="row" style="margin-top:12px"><button class="primary" id="build">Izradi lokalni šablon</button><button id="aiDraft">Izradi AI nacrt (opciono)</button><button id="audit">Pokreni stvarnu SEO proveru</button><button id="reset">Očisti formu</button></div><div id="auditStatus" class="small" aria-live="polite">AI je podrazumevano isključen. Poziv radi samo kada je eksplicitno omogućen na Cloudflare-u; pre toga potvrdi besplatni plan i kvotu.</div>
+<div class="row" style="margin-top:12px"><button class="primary" id="build">Izradi lokalni šablon</button><button id="aiDraft">Izradi AI nacrt (opciono)</button><button id="agentRun">Pokreni 3 AI agenta</button><button id="audit">Pokreni stvarnu SEO proveru</button><button id="reset">Očisti formu</button></div><div id="auditStatus" class="small" aria-live="polite">AI je podrazumevano isključen. Poziv radi samo kada je eksplicitno omogućen na Cloudflare-u; pre toga potvrdi besplatni plan i kvotu.</div>
 </section>
 <section class="card span6"><h2>2. Kontrola kvaliteta</h2><p class="small">Označi samo provere koje si stvarno izvršio. Ove kućice nisu automatski dokazi da je rezultat ispravan.</p>
 <p id="skillInfo" class="small">Procedura i kontrolna lista prilagođavaju se izabranoj vrsti zadatka. Sve provere su ručne.</p>
@@ -38,6 +38,9 @@
 const KEY='safe-automaton-execution-lab-v1';
 const $=id=>document.getElementById(id);
 let artifact='';
+// Keep verified audit evidence separate from the editable/generated output.
+let auditEvidence='';
+let auditEvidenceUrl='';
 let activeRecordId=null;
 let records=readRecords();
 function readRecords(){try{const x=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(x)?x:[]}catch{return []}}
@@ -91,10 +94,69 @@ function build(){
   }finally{$('build').disabled=false;}
 }
 function blobDownload(name,text,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-function renderRecords(){$('records').innerHTML=records.length?records.slice().reverse().map((r,i)=>'<div class="status"><strong>'+esc(r.title)+'</strong> · '+esc(r.createdAt)+' · QA '+esc(r.qaCount)+'/'+esc(r.qaTotal)+' <button data-open="'+esc(r.id)+'">Otvori</button></div>').join(''):'Nema sačuvanih zapisa.'}
+function renderRecords(){
+  $('records').innerHTML=records.length?records.slice().reverse().map(r=>'<div class="status"><strong>'+esc(r.title||'Zadatak bez naziva')+'</strong> · '+esc(r.createdAt||'datum nije poznat')+' · QA '+esc(r.qaCount??0)+'/'+esc(r.qaTotal??0)+' <button type="button" data-open="'+esc(r.id)+'">Otvori</button></div>').join(''):'Nema sačuvanih zapisa.';
+}
 $('build').addEventListener('click',build);
 $('taskType').addEventListener('change',()=>{$('audit').hidden=$('taskType').value!=='seo';renderProcedure();});
 function formatSeoAudit(data,title='SEO provera'){
+  if(data?.status==='success'&&data.seo_metrics&&typeof data.seo_metrics==='object'){
+    const m=data.seo_metrics,t=data.timing||{},scope=data.audit_scope||{};
+    const signals=[];
+    if(!m.title)signals.push('Nedostaje <title> u preuzetom HTML-u.');
+    else if(m.title_length<30||m.title_length>60)signals.push('Dužina title-a je '+m.title_length+' znakova; proveri prikaz i nameru pretrage.');
+    if(!m.meta_description)signals.push('Meta description nije pronađen u preuzetom HTML-u.');
+    else if(m.meta_description_count>1)signals.push('Pronađeno je '+m.meta_description_count+' meta description oznaka; proveri da li su duplikati namerni.');
+    if(m.h1_tags?.length!==1)signals.push('Pronađeno H1 naslova: '+(Array.isArray(m.h1_tags)?m.h1_tags.length:'nepoznato')+'; proveri semantiku stranice.');
+    if((m.images_missing_alt||0)>0)signals.push('Slike bez alt atributa: '+m.images_missing_alt+' od '+m.total_images+'; ručno razlikuj informativne i dekorativne slike.');
+    if(!m.canonical_url)signals.push('Canonical URL nije pronađen u preuzetom HTML-u.');
+    if(/noindex/i.test(m.robots_meta||''))signals.push('Robots meta sadrži noindex; potvrdi da je to namerno.');
+    const lines=[
+      '# SEO Evidence Audit — '+title,'',
+      '**Vreme provere:** '+(data.audit_timestamp||'nije navedeno'),
+      '**Zatraženi URL:** '+(data.target_url||'nije naveden'),
+      '**Konačni URL:** '+(data.final_url||'nije naveden'),
+      '**HTTP status ciljne stranice:** '+(m.http_status??'nije naveden'),
+      '**Izvor dokaza:** '+(scope.evidence_source||'initial_html'),
+      '**JavaScript izvršen:** '+(scope.javascript_executed?'da':'ne'),
+      '**Renderovani DOM proveren:** '+(scope.rendered_dom_checked?'da':'ne'),
+      '**Povezane stranice pretražene:** '+(scope.linked_pages_crawled?'da':'ne'),
+      '**SHA-256 HTML-a:** '+(data.content_hash||'nije dostupan'),
+      '**Preusmeravanja:** '+(data.redirect_count??'nije navedeno'),
+      '',
+      '## Izmerene SEO metrike',
+      '- Title: '+(m.title||'nije pronađen'),
+      '- Dužina title-a: '+(m.title_length??'nije navedena'),
+      '- Meta description: '+(m.meta_description||'nije pronađen'),
+      '- Broj meta description oznaka: '+(m.meta_description_count??'nije navedeno'),
+      '- H1 naslovi: '+(Array.isArray(m.h1_tags)&&m.h1_tags.length?m.h1_tags.join(' | '):'nijedan pronađen'),
+      '- Broj H2 oznaka: '+(m.h2_count??'nije navedeno'),
+      '- Slike sa alt atributom: '+(m.images_with_alt??'nije navedeno')+'/'+(m.total_images??'nije navedeno'),
+      '- Slike bez alt atributa: '+(m.images_missing_alt??'nije navedeno'),
+      '- Canonical URL: '+(m.canonical_url||'nije pronađen'),
+      '- Robots meta: '+(m.robots_meta||'nije pronađen'),
+      '- Veličina HTML-a: '+(m.html_characters??'nije navedena')+' znakova',
+      '',
+      '## Signali za ljudsku proveru',
+      ...(signals.length?signals.map((x,i)=>(i+1)+'. '+x):['Nijedan od osnovnih signala za proveru nije aktiviran na osnovu ovih metrika. To nije potvrda da je cela stranica SEO-ispravna.']),
+      '',
+      '## Trajanje obrade',
+      '- Preuzimanje: '+(t.fetch_duration_ms??'nije navedeno')+' ms',
+      '- Parsiranje: '+(t.parse_duration_ms??'nije navedeno')+' ms',
+      '- Analiza: '+(t.analysis_duration_ms??'nije navedeno')+' ms',
+      '- Ukupno: '+(t.audit_duration_ms??'nije navedeno')+' ms',
+      '',
+      '## Ograničenja',
+      '- Audit analizira samo početni HTML; JavaScript nije izvršen.',
+      '- Renderovani DOM i povezane stranice nisu provereni.',
+      '- Signali su indikatori za ljudsku proveru, a ne automatska potvrda SEO greške.',
+      '- Rezultat nije automatski primenjen niti poslat klijentu.',
+      '',
+      '## Status',
+      'Prikupljeni su stvarni tehnički dokazi. Potrebni su ljudska provera i, gde je relevantno, vizuelna provera u pregledaču.'
+    ];
+    return lines.join('\n');
+  }
   const findings=Array.isArray(data.findings)?data.findings:[];
   const actionable=findings.filter(f=>f.status==='FAIL'||f.status==='WARN')
     .sort((a,b)=>({HIGH:0,MEDIUM:1,REVIEW:2,INFO:3}[a.priority]??4)-({HIGH:0,MEDIUM:1,REVIEW:2,INFO:3}[b.priority]??4));
@@ -149,21 +211,42 @@ $('audit').addEventListener('click',async()=>{
   $('audit').disabled=true;$('auditStatus').textContent='Prikupljam javne HTML dokaze…';
   try{
     const response=await fetch('/api/seo-audit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:source})});
-    const data=await response.json();
-    if(!response.ok||!data.ok)throw new Error(data.error||'SEO audit nije uspeo.');
+    const contentType=response.headers.get('content-type')||'';
+    if(!contentType.toLowerCase().includes('application/json')){
+      throw new Error('SEO endpoint nije vratio JSON (HTTP '+response.status+', Content-Type: '+(contentType||'nije naveden')+'). Proveri runtime/WAF odgovor; audit nije napravljen.');
+    }
+    let data;
+    try{data=await response.json();}
+    catch{throw new Error('SEO endpoint je vratio neispravan JSON (HTTP '+response.status+'). Audit nije napravljen.');}
+    if(!response.ok||data?.status==='error'||(data?.status!=='success'&&!data?.ok)){
+      const detail=data?.error_details||{};
+      const parts=[
+        data?.error_message||data?.error||'SEO audit nije uspeo.',
+        data?.error_type?'Kod: '+data.error_type:'',
+        detail.http_status?'HTTP cilja: '+detail.http_status:'',
+        detail.reason?'Detalj: '+detail.reason:''
+      ].filter(Boolean);
+      throw new Error(parts.join(' · ')+' (HTTP '+response.status+').');
+    }
     artifact=formatSeoAudit(data,$('title').value.trim()||'SEO provera');
+    auditEvidence=artifact;
+    auditEvidenceUrl=source;
     activeRecordId=null;
     $('output').textContent=artifact;
     $('copy').disabled=$('download').disabled=$('save').disabled=false;
     getChecks().forEach(x=>x.checked=false);qa();
-    $('saved').textContent='SEO dokazi prikupljeni. QA provere su resetovane; pregledaj svaki nalaz pre isporuke.';
-    $('auditStatus').textContent='Audit završen: HTTP '+data.httpStatus+' · '+data.summary.total+' nalaza. Proveri upozorenja i ograničenja.';
+    $('saved').textContent='SEO dokazi prikupljeni. QA provere su resetovane; pregledaj signale i ograničenja.';
+    const metrics=data.seo_metrics||{};
+    $('auditStatus').textContent='Audit završen: HTTP '+(metrics.http_status??data.httpStatus??'nepoznat')+' · '+(data.content_hash?'SHA-256 potvrđen':'hash nije dostupan')+'. Proveri signale i ograničenja.';
   }catch(error){
     $('auditStatus').textContent='Provera nije završena: '+(error instanceof Error?error.message:'nepoznata greška')+'. Nije napravljen lažno uspešan izveštaj.';
   }finally{$('audit').disabled=false;}
 });
 $('aiDraft').addEventListener('click',async()=>{
   const button=$('aiDraft');
+  // A disabled button prevents duplicate submissions; the request timeout below
+  // guarantees that a stalled fetch cannot leave it disabled indefinitely.
+  if(button.disabled)return;
   const taskType=$('taskType').value;
   const title=$('title').value.trim();
   const brief=$('brief').value.trim();
@@ -172,20 +255,46 @@ $('aiDraft').addEventListener('click',async()=>{
     $('auditStatus').textContent='Unesi naslov i brief pre izrade nacrta.';
     return;
   }
+  const requestedSource=$('source').value.trim();
+  const auditEvidenceMatches=Boolean(auditEvidence && auditEvidenceUrl===requestedSource);
   button.disabled=true;
+  button.textContent='Generisanje u toku…';
+  button.setAttribute('aria-busy','true');
   $('auditStatus').style.color='var(--text)';
   $('auditStatus').textContent='Proveravam dostupnost AI servisa…';
   let fallbackReason='';
   try{
-    const evidence=($('facts').value.trim()||artifact).slice(0,4000);
+    const currentFacts=$('facts').value.trim();
+    const source=$('source').value.trim();
+    const deadline=$('deadline').value.trim();
+    // Never use a previous AI draft as if it were audit evidence.
+    const evidence=[
+      source?'URL ZA PROVERU: '+source:'',
+      deadline?'Interni rok: '+deadline:'',
+      currentFacts?'Proverene činjenice / ograničenja:\n'+currentFacts:'',
+      auditEvidenceMatches?'STVARNI SEO AUDIT (dokazi) za ovaj URL:\n'+auditEvidence:'',
+      taskType==='seo'&&source&&!auditEvidenceMatches?'VAŽNO OGRANIČENJE: SEO audit dokazi nisu prikupljeni u ovoj sesiji za ovaj URL. Napravi samo preliminarni plan provere; ne tvrdi da je sajt testiran i ne izmišljaj metrike.':'',
+      !auditEvidenceMatches&&artifact&&!artifact.startsWith('# AI RADNI NACRT')?'Postojeći radni rezultat (nije automatski potvrđen kao dokaz):\n'+artifact:''
+    ].filter(Boolean).join('\n\n').slice(0,4000);
     const aiToken=$('aiToken').value.trim();
     const headers={'Content-Type':'application/json'};
     if(aiToken.length>=32)headers['X-Safe-Automaton-AI-Token']=aiToken;
     let response;
+    let requestTimeout;
     try{
-      response=await fetch('/api/ai-task',{method:'POST',headers,body:JSON.stringify({taskType,title,brief,evidence})});
+      response=await Promise.race([
+        fetch('/api/ai-task',{
+          method:'POST',
+          headers,
+          body:JSON.stringify({taskType,title,brief,source,deadline,facts:currentFacts,evidence})
+        }),
+        new Promise(resolve=>{requestTimeout=setTimeout(()=>resolve(null),25000);})
+      ]);
+      if(!response)fallbackReason='AI endpoint nije odgovorio u roku od 25 sekundi. Pripremljen je lokalni nacrt; proveri Cloudflare runtime logove pre novog pokušaja.';
     }catch(error){
       fallbackReason='Mrežna greška: '+(error instanceof Error?error.message:'zahtev nije uspeo');
+    }finally{
+      clearTimeout(requestTimeout);
     }
     if(response){
       const contentType=response.headers.get('content-type')||'';
@@ -203,7 +312,9 @@ $('aiDraft').addEventListener('click',async()=>{
         ].filter(Boolean).join('; ');
         fallbackReason='AI nije aktiviran u Cloudflare runtime-u ['+(data.diagnosticCode||data.error)+']. '+(data.detail?String(data.detail)+' ':'')+(runtimeDetails?'Dijagnostika: '+runtimeDetails+'.':'');
       }else if(!response.ok||!data.ok){
-        throw new Error(data.detail||data.error||'AI nacrt nije uspeo (HTTP '+response.status+').');
+        const failure=new Error(data.detail||data.error||'AI nacrt nije uspeo (HTTP '+response.status+').');
+        if(data.diagnostics&&typeof data.diagnostics==='object')failure.diagnostics=data.diagnostics;
+        throw failure;
       }else{
         if(typeof data.draft!=='string'||!data.draft.trim())throw new Error('AI servis je vratio prazan nacrt.');
         artifact='# AI RADNI NACRT — '+title+'\n\n'+data.draft+'\n\n---\nStatus: '+(data.status||'nije potvrđen')+'\nModel: '+(data.model||'nije naveden')+'\nVreme: '+(data.generatedAt||'nije navedeno')+'\nProvera: '+(data.disclaimer||'Nije nezavisno provereno.')+'\nPoslato klijentu: ne. Spoljne radnje: nijedna.';
@@ -228,17 +339,65 @@ $('aiDraft').addEventListener('click',async()=>{
       :'AI nacrt je spreman za ljudsku proveru. Proveri činjenice i preporuke pre upotrebe.';
   }catch(error){
     $('auditStatus').style.color='var(--bad)';
-    $('auditStatus').textContent='AI nacrt nije napravljen: '+(error instanceof Error?error.message:'nepoznata greška')+'. Lokalni fallback nije pokrenut jer odgovor nije prepoznat kao očekivano isključenje AI-ja ili mrežni prekid.';
+    const message='AI nacrt nije napravljen: '+(error instanceof Error?error.message:'nepoznata greška')+'. Lokalni fallback nije pokrenut jer odgovor nije prepoznat kao očekivano isključenje AI-ja ili mrežni prekid.';
+    $('auditStatus').textContent=message+(error&&error.diagnostics?'\nDijagnostika (bez sadržaja prompta i nacrta):\n'+JSON.stringify(error.diagnostics,null,2):'');
   }finally{
     button.disabled=false;
+    button.textContent='Izradi AI nacrt (opciono)';
+    button.removeAttribute('aria-busy');
   }
+});
+$('agentRun').addEventListener('click',async()=>{
+  const button=$('agentRun');
+  const taskType=$('taskType').value;
+  const title=$('title').value.trim();
+  const brief=$('brief').value.trim();
+  const aiToken=$('aiToken').value.trim();
+  if(!title||!brief){
+    $('auditStatus').style.color='var(--bad)';
+    $('auditStatus').textContent='Unesi naslov i brief pre pokretanja agenata.';
+    return;
+  }
+  if(aiToken.length<32){
+    $('auditStatus').style.color='var(--bad)';
+    $('auditStatus').textContent='Unesi AI pristupni token od najmanje 32 karaktera. Token se ne čuva u zapisima.';
+    return;
+  }
+  button.disabled=true;
+  $('auditStatus').style.color='var(--text)';
+  $('auditStatus').textContent='Pokrećem Planner → Specialist → Reviewer. Svaka faza koristi Workers AI; nema alata ni spoljnih radnji.';
+  try{
+    const response=await fetch('/api/agent-run',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},
+      body:JSON.stringify({taskType,title,brief,evidence:($('facts').value.trim()||artifact).slice(0,4000)})
+    });
+    const contentType=response.headers.get('content-type')||'';
+    if(!contentType.includes('application/json'))throw new Error('Server nije vratio JSON (HTTP '+response.status+').');
+    const data=await response.json();
+    if(!response.ok||!data.ok)throw new Error(data.error||data.code||'Agent pipeline nije uspeo (HTTP '+response.status+').');
+    if(typeof data.draft!=='string'||!data.draft.trim())throw new Error('Agent pipeline je vratio prazan rezultat.');
+    const trace=(Array.isArray(data.trace)?data.trace:[]).map(item=>'- '+String(item.name||item.agent||'Agent')+': '+String(item.status||'nepoznato')).join('\n');
+    artifact='# SAFE AUTOMATON — MULTI-AGENT NACRT\n\n## Zadatak\n'+title+'\n\n'+data.draft+'\n\n---\n## Evidencija agent pipeline-a\n'+trace+'\n\nModel: '+String(data.model||'nije naveden')+'\nVreme: '+String(data.generatedAt||'nije navedeno')+'\nNezavisno provereno: ne.\nPoslato/objavljeno: ne.\nSpoljne radnje: nijedna.\nNapomena: '+String(data.disclaimer||'Zahteva ljudski pregled.');
+    activeRecordId=null;
+    $('output').textContent=artifact;
+    $('copy').disabled=$('download').disabled=$('save').disabled=false;
+    getChecks().forEach(x=>x.checked=false);qa();
+    $('saved').style.color='var(--accent)';
+    $('saved').textContent='Multi-agent nacrt je napravljen. Tri faze su završene; rezultat nije nezavisno verifikovan.';
+    $('auditStatus').style.color='var(--accent)';
+    $('auditStatus').textContent='Pipeline završen: '+String(data.agentCount||0)+' agenta/faze. Pregledaj rezultat, pa ručno izvrši QA.';
+  }catch(error){
+    $('auditStatus').style.color='var(--bad)';
+    $('auditStatus').textContent='Multi-agent pipeline nije uspeo: '+(error instanceof Error?error.message:'nepoznata greška')+'. Nije pokrenut lokalni fallback i nije izvršena spoljna radnja.';
+  }finally{button.disabled=false;}
 });
 $('reset').addEventListener('click',()=>{
   if($('reset').disabled)return;
   $('reset').disabled=true;
   try{
     ['title','brief','source','deadline','facts','aiToken'].forEach(id=>$(id).value='');
-    artifact='';activeRecordId=null;$('output').textContent='Forma je očišćena.';
+    artifact='';auditEvidence='';activeRecordId=null;$('output').textContent='Forma je očišćena.';
     $('copy').disabled=$('download').disabled=$('save').disabled=true;
     $('saved').textContent='';$('saved').style.color='var(--muted)';
     getChecks().forEach(x=>x.checked=false);qa();
@@ -276,7 +435,7 @@ $('save').addEventListener('click',()=>{
   try{
     const now=new Date().toISOString(),title=$('title').value.trim();
     const existing=(activeRecordId&&records.find(r=>r.id===activeRecordId))||records.slice().reverse().find(r=>r.title===title&&r.artifact===artifact);
-    const rec={id:existing?.id||(crypto.randomUUID?crypto.randomUUID():String(Date.now())),title,createdAt:existing?.createdAt||now,updatedAt:existing?now:undefined,artifact,qaCount:getChecks().filter(x=>x.checked).length,qaTotal:getChecks().length,qa:getChecks().map(x=>({label:x.parentElement.textContent.trim(),checked:x.checked})),status:'DRAFT_NOT_SENT'};
+    const rec={id:existing?.id||(crypto.randomUUID?crypto.randomUUID():String(Date.now())),title,createdAt:existing?.createdAt||now,updatedAt:existing?now:undefined,taskType:$('taskType').value,brief:$('brief').value,source:$('source').value,deadline:$('deadline').value,facts:$('facts').value,auditEvidence,artifact,qaCount:getChecks().filter(x=>x.checked).length,qaTotal:getChecks().length,qa:getChecks().map(x=>({key:x.value,label:x.parentElement.textContent.trim(),checked:x.checked})),status:'DRAFT_NOT_SENT'};
     const nextRecords=existing?records.map(r=>r.id===existing.id?{...r,...rec}:r):[...records,rec];
     localStorage.setItem(KEY,JSON.stringify(nextRecords));records=nextRecords;activeRecordId=rec.id;
     $('saved').style.color='var(--accent)';
@@ -293,10 +452,23 @@ $('records').addEventListener('click',e=>{
   try{
     const r=records.find(x=>x.id===b.dataset.open);
     if(!r){$('saved').style.color='var(--bad)';$('saved').textContent='Zapis nije pronađen u lokalnoj evidenciji. Osveži listu i pokušaj ponovo.';return;}
-    activeRecordId=r.id;artifact=r.artifact;$('output').textContent=artifact;$('title').value=r.title;
+    if(typeof r.artifact!=='string'||!r.artifact.trim())throw new Error('Sačuvani zapis nema radni rezultat.');
+    // Restore the complete task specification before rebuilding its QA controls.
+    $('taskType').value=procedures[r.taskType]?r.taskType:'seo';
+    auditEvidence=typeof r.auditEvidence==='string'?r.auditEvidence:(typeof r.artifact==='string'&&r.artifact.startsWith('# SEO Evidence Audit')?r.artifact:'');
+    $('title').value=r.title||'';
+    $('brief').value=typeof r.brief==='string'?r.brief:'';
+    $('source').value=typeof r.source==='string'?r.source:'';
+    $('deadline').value=typeof r.deadline==='string'?r.deadline:'';
+    $('facts').value=typeof r.facts==='string'?r.facts:'';
+    renderProcedure();
+    const savedChecks=new Map((Array.isArray(r.qa)?r.qa:[]).map((q,i)=>[q.key||String(i),Boolean(q.checked)]));
+    getChecks().forEach((x,i)=>{x.checked=savedChecks.has(x.value)?savedChecks.get(x.value):Boolean(r.qa?.[i]?.checked)});
+    activeRecordId=r.id;artifact=r.artifact;$('output').textContent=artifact;
     $('copy').disabled=$('download').disabled=$('save').disabled=!Boolean(artifact);
-    $('saved').style.color='var(--accent)';$('saved').textContent='Učitano iz lokalne evidencije; nacrt nije poslat.';
-    getChecks().forEach((x,i)=>x.checked=Boolean(r.qa?.[i]?.checked));qa();
+    qa();
+    $('saved').style.color='var(--accent)';
+    $('saved').textContent=(r.brief===undefined?'Zapis otvoren; starija verzija ne sadrži sva polja specifikacije. ':'')+'Zapis je učitan u formu i radni rezultat. Nacrt nije poslat.';
   }catch(error){
     $('saved').style.color='var(--bad)';$('saved').textContent='Otvaranje zapisa nije uspelo: '+(error instanceof Error?error.message:'nepoznata greška')+'.';
   }finally{b.disabled=false;}
@@ -304,8 +476,20 @@ $('records').addEventListener('click',e=>{
 $('exportJson').addEventListener('click',()=>{
   const button=$('exportJson');if(button.disabled)return;button.disabled=true;
   try{
+    // Re-read this origin's storage immediately before export so the download matches the visible local ledger.
+    const stored=localStorage.getItem(KEY);
+    if(stored!==null){
+      const parsed=JSON.parse(stored);
+      if(!Array.isArray(parsed))throw new Error('Lokalna evidencija nije u očekivanom JSON formatu.');
+      records=parsed;
+      renderRecords();
+    }else{
+      records=[];
+      renderRecords();
+    }
     blobDownload('safe-automaton-execution-records.json',JSON.stringify(records,null,2),'application/json;charset=utf-8');
-    $('saved').style.color='var(--accent)';$('saved').textContent='JSON evidencija je pripremljena za preuzimanje.';
+    $('saved').style.color='var(--accent)';
+    $('saved').textContent='JSON evidencija je pripremljena: '+records.length+' sačuvanih zapisa za ovaj host/pregledač.';
   }catch(error){
     $('saved').style.color='var(--bad)';$('saved').textContent='Izvoz JSON evidencije nije uspeo: '+(error instanceof Error?error.message:'nepoznata greška')+'.';
   }finally{button.disabled=false;}
