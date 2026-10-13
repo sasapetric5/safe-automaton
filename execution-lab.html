@@ -38,6 +38,8 @@
 const KEY='safe-automaton-execution-lab-v1';
 const $=id=>document.getElementById(id);
 let artifact='';
+// Keep verified audit evidence separate from the editable/generated output.
+let auditEvidence='';
 let activeRecordId=null;
 let records=readRecords();
 function readRecords(){try{const x=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(x)?x:[]}catch{return []}}
@@ -226,6 +228,7 @@ $('audit').addEventListener('click',async()=>{
       throw new Error(parts.join(' · ')+' (HTTP '+response.status+').');
     }
     artifact=formatSeoAudit(data,$('title').value.trim()||'SEO provera');
+    auditEvidence=artifact;
     activeRecordId=null;
     $('output').textContent=artifact;
     $('copy').disabled=$('download').disabled=$('save').disabled=false;
@@ -251,12 +254,23 @@ $('aiDraft').addEventListener('click',async()=>{
     return;
   }
   button.disabled=true;
+  button.textContent='Generisanje u toku…';
   button.setAttribute('aria-busy','true');
   $('auditStatus').style.color='var(--text)';
   $('auditStatus').textContent='AI zahtev je u toku. Sačekaj odgovor; ako servis ne odgovori za 60 sekundi, dugme će se osloboditi i prikazaće se greška.';
   let fallbackReason='';
   try{
-    const evidence=($('facts').value.trim()||artifact).slice(0,4000);
+    const currentFacts=$('facts').value.trim();
+    const source=$('source').value.trim();
+    const deadline=$('deadline').value.trim();
+    // Never use a previous AI draft as if it were audit evidence.
+    const evidence=[
+      source?'URL ZA PROVERU: '+source:'',
+      deadline?'Interni rok: '+deadline:'',
+      currentFacts?'Proverene činjenice / ograničenja:\n'+currentFacts:'',
+      auditEvidence?'STVARNI SEO AUDIT (dokazi):\n'+auditEvidence:'',
+      !auditEvidence&&artifact&&!artifact.startsWith('# AI RADNI NACRT')?'Postojeći radni rezultat (nije automatski potvrđen kao dokaz):\n'+artifact:''
+    ].filter(Boolean).join('\n\n').slice(0,4000);
     const aiToken=$('aiToken').value.trim();
     const headers={'Content-Type':'application/json'};
     if(aiToken.length>=32)headers['X-Safe-Automaton-AI-Token']=aiToken;
@@ -267,7 +281,7 @@ $('aiDraft').addEventListener('click',async()=>{
       response=await fetch('/api/ai-task',{
         method:'POST',
         headers,
-        body:JSON.stringify({taskType,title,brief,evidence}),
+        body:JSON.stringify({taskType,title,brief,source,deadline,facts:currentFacts,evidence}),
         signal:controller.signal
       });
     }catch(error){
@@ -325,6 +339,7 @@ $('aiDraft').addEventListener('click',async()=>{
     $('auditStatus').textContent=message+(error&&error.diagnostics?'\nDijagnostika (bez sadržaja prompta i nacrta):\n'+JSON.stringify(error.diagnostics,null,2):'');
   }finally{
     button.disabled=false;
+    button.textContent='Izradi AI nacrt (opciono)';
     button.removeAttribute('aria-busy');
   }
 });
@@ -378,7 +393,7 @@ $('reset').addEventListener('click',()=>{
   $('reset').disabled=true;
   try{
     ['title','brief','source','deadline','facts','aiToken'].forEach(id=>$(id).value='');
-    artifact='';activeRecordId=null;$('output').textContent='Forma je očišćena.';
+    artifact='';auditEvidence='';activeRecordId=null;$('output').textContent='Forma je očišćena.';
     $('copy').disabled=$('download').disabled=$('save').disabled=true;
     $('saved').textContent='';$('saved').style.color='var(--muted)';
     getChecks().forEach(x=>x.checked=false);qa();
@@ -416,7 +431,7 @@ $('save').addEventListener('click',()=>{
   try{
     const now=new Date().toISOString(),title=$('title').value.trim();
     const existing=(activeRecordId&&records.find(r=>r.id===activeRecordId))||records.slice().reverse().find(r=>r.title===title&&r.artifact===artifact);
-    const rec={id:existing?.id||(crypto.randomUUID?crypto.randomUUID():String(Date.now())),title,createdAt:existing?.createdAt||now,updatedAt:existing?now:undefined,taskType:$('taskType').value,brief:$('brief').value,source:$('source').value,deadline:$('deadline').value,facts:$('facts').value,artifact,qaCount:getChecks().filter(x=>x.checked).length,qaTotal:getChecks().length,qa:getChecks().map(x=>({key:x.value,label:x.parentElement.textContent.trim(),checked:x.checked})),status:'DRAFT_NOT_SENT'};
+    const rec={id:existing?.id||(crypto.randomUUID?crypto.randomUUID():String(Date.now())),title,createdAt:existing?.createdAt||now,updatedAt:existing?now:undefined,taskType:$('taskType').value,brief:$('brief').value,source:$('source').value,deadline:$('deadline').value,facts:$('facts').value,auditEvidence,artifact,qaCount:getChecks().filter(x=>x.checked).length,qaTotal:getChecks().length,qa:getChecks().map(x=>({key:x.value,label:x.parentElement.textContent.trim(),checked:x.checked})),status:'DRAFT_NOT_SENT'};
     const nextRecords=existing?records.map(r=>r.id===existing.id?{...r,...rec}:r):[...records,rec];
     localStorage.setItem(KEY,JSON.stringify(nextRecords));records=nextRecords;activeRecordId=rec.id;
     $('saved').style.color='var(--accent)';
@@ -436,6 +451,7 @@ $('records').addEventListener('click',e=>{
     if(typeof r.artifact!=='string'||!r.artifact.trim())throw new Error('Sačuvani zapis nema radni rezultat.');
     // Restore the complete task specification before rebuilding its QA controls.
     $('taskType').value=procedures[r.taskType]?r.taskType:'seo';
+    auditEvidence=typeof r.auditEvidence==='string'?r.auditEvidence:(typeof r.artifact==='string'&&r.artifact.startsWith('# SEO Evidence Audit')?r.artifact:'');
     $('title').value=r.title||'';
     $('brief').value=typeof r.brief==='string'?r.brief:'';
     $('source').value=typeof r.source==='string'?r.source:'';
