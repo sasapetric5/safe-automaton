@@ -22,8 +22,8 @@ function route(overrides = {}) {
 
 test("selects the first enabled route with verified free quota and sufficient token headroom", () => {
   const result = selectFailoverRoute([
-    route({ id: "paid", billingStatus: "paid" }),
-    route({ id: "low-headroom", remainingTokens: 500 }),
+    route({ id: "paid", billingStatus: "paid", quotaDomain: "paid-account" }),
+    route({ id: "low-headroom", remainingTokens: 500, quotaDomain: "low-quota-account" }),
     route({ id: "next-free", provider: "provider-b", model: "deepseek-example", quotaDomain: "account-b" })
   ], { inputTokens: 400, maxOutputTokens: 1000, safetyTokens: 200, maxSnapshotAgeMs: 60_000 }, now);
   assert.equal(result.route.id, "next-free");
