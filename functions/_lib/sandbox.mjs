@@ -45,7 +45,7 @@ export function runSandboxCheck(operation, input) {
       warnings,
       characterCount: input.length,
       executionMode: "static-validation-only",
-      note: "Ovo je statička provera, ne HTML sanitizer niti dokaz bezbednosti."
+      note: "Ovo je statička provera, nije HTML sanitizer i nije dokaz bezbednosti."
     };
   }
 
