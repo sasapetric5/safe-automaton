@@ -24,4 +24,4 @@ jobs:
         with:
           node-version: 22
       - name: Run repository and AI diagnostics tests
-        run: node --test tests/*.test.mjs
+        run: node --test tests/repository-smoke.test.mjs tests/seo-audit-v2.test.mjs tests/ai-diagnostics.test.mjs tests/agent-run.test.mjs
