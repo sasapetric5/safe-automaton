@@ -40,6 +40,7 @@ const $=id=>document.getElementById(id);
 let artifact='';
 // Keep verified audit evidence separate from the editable/generated output.
 let auditEvidence='';
+let auditEvidenceUrl='';
 let activeRecordId=null;
 let records=readRecords();
 function readRecords(){try{const x=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(x)?x:[]}catch{return []}}
@@ -229,6 +230,7 @@ $('audit').addEventListener('click',async()=>{
     }
     artifact=formatSeoAudit(data,$('title').value.trim()||'SEO provera');
     auditEvidence=artifact;
+    auditEvidenceUrl=source;
     activeRecordId=null;
     $('output').textContent=artifact;
     $('copy').disabled=$('download').disabled=$('save').disabled=false;
@@ -253,6 +255,12 @@ $('aiDraft').addEventListener('click',async()=>{
     $('auditStatus').textContent='Unesi naslov i brief pre izrade nacrta.';
     return;
   }
+  const requestedSource=$('source').value.trim();
+  if(taskType==='seo' && requestedSource && (!auditEvidence || auditEvidenceUrl!==requestedSource)){
+    $('auditStatus').style.color='var(--warn)';
+    $('auditStatus').textContent='Pre AI nacrta prvo pokreni „Pokreni stvarnu SEO proveru“ za ovaj URL. Trenutni URL nema odgovarajući audit dokaz u ovoj sesiji; AI nije pozvan.';
+    return;
+  }
   button.disabled=true;
   button.textContent='Generisanje u toku…';
   button.setAttribute('aria-busy','true');
@@ -268,7 +276,7 @@ $('aiDraft').addEventListener('click',async()=>{
       source?'URL ZA PROVERU: '+source:'',
       deadline?'Interni rok: '+deadline:'',
       currentFacts?'Proverene činjenice / ograničenja:\n'+currentFacts:'',
-      auditEvidence?'STVARNI SEO AUDIT (dokazi):\n'+auditEvidence:'',
+      (auditEvidence && auditEvidenceUrl===source)?'STVARNI SEO AUDIT (dokazi):\n'+auditEvidence:'',
       !auditEvidence&&artifact&&!artifact.startsWith('# AI RADNI NACRT')?'Postojeći radni rezultat (nije automatski potvrđen kao dokaz):\n'+artifact:''
     ].filter(Boolean).join('\n\n').slice(0,4000);
     const aiToken=$('aiToken').value.trim();
