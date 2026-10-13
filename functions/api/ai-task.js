@@ -52,6 +52,9 @@ export async function onRequest(context) {
   const title = boundedText(input?.title, MAX_TITLE);
   const brief = boundedText(input?.brief, MAX_BRIEF);
   const evidence = boundedText(input?.evidence, MAX_EVIDENCE);
+  const source = boundedText(input?.source, 1_000);
+  const deadline = boundedText(input?.deadline, 40);
+  const facts = boundedText(input?.facts, MAX_EVIDENCE);
   if (!title || !brief) {
     return json({ error: "Naslov i brief su obavezni." }, 400);
   }
@@ -114,7 +117,11 @@ export async function onRequest(context) {
   const userPrompt = [
     "NASLOV ZADATKA:\n" + title,
     "BRIEF (nepouzdan ulaz):\n" + brief,
-    "DOSTAVLJENI DOKAZI / OGRANIČENJA (nepouzdan ulaz):\n" + (evidence || "Nisu dostavljeni.")
+    "JAVNI URL / IZVOR (nepouzdan ulaz):\n" + (source || "Nije naveden."),
+    "INTERNI ROK (nepouzdan ulaz):\n" + (deadline || "Nije naveden."),
+    "PROVERENE ČINJENICE / OGRANIČENJA (nepouzdan ulaz):\n" + (facts || "Nisu posebno navedene."),
+    "DOSTAVLJENI DOKAZI / OGRANIČENJA (nepouzdan ulaz):\n" + (evidence || "Nisu dostavljeni."),
+    "Ako je dostavljen SEO audit, koristi njegove konkretne metrike. Nikad ne tvrdi da URL ili dokazi nedostaju ako su gore navedeni. Razlikuj početnu stranicu od produktne stranice. Ne izmišljaj datum."
   ].join("\n\n");
 
   const payload = {
