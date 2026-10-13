@@ -35,3 +35,19 @@ Do not add a pretend localStorage-only budget guard: it cannot coordinate concur
 - Gemini rate limits: https://ai.google.dev/gemini-api/docs/rate-limits
 - Gemini billing: https://ai.google.dev/gemini-api/docs/billing
 - Gemini pricing: https://ai.google.dev/gemini-api/docs/pricing
+
+## Multi-provider failover policy (planner only; not wired to live providers yet)
+
+The failover planner lives in `functions/_lib/ai-failover.mjs`. It is intentionally a pure decision module and does not make provider requests or read secrets.
+
+- Routes must be ordered by operator policy and carry a verified, recent quota snapshot from the future durable guard.
+- Before a call, estimated input tokens + maximum output tokens + a safety reserve must fit inside the remaining-token headroom, and at least one request must remain.
+- Each route must explicitly attest `billingStatus: "free_verified"`, `paidBudgetEur: 0`, and `quotaVerified: true`. Missing, stale, unknown, or malformed quota data means stop/skip.
+- Routes share a `quotaDomain` when their quota is shared (for example, multiple Google keys under one project). A depleted/uncertain quota domain is not treated as extra capacity just because another key exists.
+- HTTP 429 can only fail over to a separately verified independent quota domain; never rotate among keys to bypass a shared quota. HTTP 402 always stops. HTTP 401 can move to another credential only if the next route independently passes the guard.
+- Failover after a network/5xx error is only eligible for an independent quota domain and still requires a fresh atomic reservation before the next provider call.
+- Token estimates and quota snapshots are advisory unless the guard reserves capacity atomically immediately before each provider request. This planner is not itself a hard budget enforcement mechanism.
+
+### Not implemented yet
+
+This commit adds only the decision planner and mocked tests. It does not connect Qwen, DeepSeek, GLM, Kimi, OpenRouter, Hugging Face, or other providers; it does not create or configure a Cloudflare Durable Object/service binding; and it does not activate Gemini. The live failover chain must remain disabled until the durable guard, provider-specific response parsers, quota-domain registry, per-call atomic reservations, and integration tests are implemented and reviewed. No real provider request or paid service was used by these tests.
