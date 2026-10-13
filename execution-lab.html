@@ -280,14 +280,21 @@ $('aiDraft').addEventListener('click',async()=>{
     const headers={'Content-Type':'application/json'};
     if(aiToken.length>=32)headers['X-Safe-Automaton-AI-Token']=aiToken;
     let response;
+    let requestTimeout;
     try{
-      response=await fetch('/api/ai-task',{
-        method:'POST',
-        headers,
-        body:JSON.stringify({taskType,title,brief,source,deadline,facts:currentFacts,evidence})
-      });
+      response=await Promise.race([
+        fetch('/api/ai-task',{
+          method:'POST',
+          headers,
+          body:JSON.stringify({taskType,title,brief,source,deadline,facts:currentFacts,evidence})
+        }),
+        new Promise(resolve=>{requestTimeout=setTimeout(()=>resolve(null),25000);})
+      ]);
+      if(!response)fallbackReason='AI endpoint nije odgovorio u roku od 25 sekundi. Pripremljen je lokalni nacrt; proveri Cloudflare runtime logove pre novog pokušaja.';
     }catch(error){
       fallbackReason='Mrežna greška: '+(error instanceof Error?error.message:'zahtev nije uspeo');
+    }finally{
+      clearTimeout(requestTimeout);
     }
     if(response){
       const contentType=response.headers.get('content-type')||'';
