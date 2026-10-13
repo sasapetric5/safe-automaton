@@ -187,9 +187,11 @@ $('agentRun').addEventListener('click',async()=>{
   if(aiToken.length<32){$('auditStatus').textContent='Unesi AI pristupni token (najmanje 32 znaka); token nije sačuvan.';return;}
   $('agentRun').disabled=true;
   $('auditStatus').textContent='Agent 1/3 · Planner priprema plan…';
+  let responseData=null;
   try{
     const response=await fetch('/api/agent-run',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
-    const data=await response.json();
+    responseData=await response.json();
+    const data=responseData;
     if(!response.ok||!data.ok){
       const completed=Array.isArray(data.completedAgents)?data.completedAgents:[];
       if(completed.length){
@@ -208,7 +210,19 @@ $('agentRun').addEventListener('click',async()=>{
     $('auditStatus').textContent='Završeno: Planner → Specialist → Reviewer. Pročitaj izlaze sva tri agenta i završni rezultat.';
   }catch(error){
     const message=error instanceof Error?error.message:'nepoznata greška';
-    $('auditStatus').textContent='Tok 3 AI agenta nije završen: '+message+'. Nema spoljne radnje.';
+    let diagnostic='';
+    if(responseData?.diagnosticCode){
+      const d=responseData, b=d.runtimeBindings;
+      diagnostic=' [dijagnostika: '+d.diagnosticCode+
+        '; host: '+(d.runtimeHost||'nepoznat')+
+        '; zastavica: '+(d.observedEnableFlag||'nepoznato')+
+        (b?'; env: '+(b.envObjectPresent?'da':'ne')+
+          '; enable: '+(b.enableFlagPresent?'da':'ne')+
+          '; token binding: '+(b.tokenBindingPresent?'da':'ne')+
+          '; AI binding: '+(b.aiBindingPresent?'da':'ne'):'')+
+        '; model pozvan: '+(d.modelInvoked?'da':'ne')+']';
+    }
+    $('auditStatus').textContent='Tok 3 AI agenta nije završen: '+message+diagnostic+'. Nema spoljne radnje.';
   }finally{$('agentRun').disabled=false;}
 });
 $('reset').addEventListener('click',()=>{['title','brief','source','deadline','facts','aiToken'].forEach(id=>$(id).value='');artifact='';activeRecordId=null;$('output').textContent='Forma je očišćena.';$('copy').disabled=$('download').disabled=$('save').disabled=true;getChecks().forEach(x=>x.checked=false);qa()});
