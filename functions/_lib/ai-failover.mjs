@@ -27,24 +27,24 @@ export function selectFailoverRoute(routes, estimate = {}, now = Date.now()) {
   for (const route of routes) {
     const id = typeof route?.id === "string" ? route.id : "unknown-route";
     const domain = typeof route?.quotaDomain === "string" ? route.quotaDomain : "";
-    const skip = (reason) => { skipped.push({ id, reason }); if (domain) blockedQuotaDomains.add(domain); };
+    const skip = (reason, blockDomain = false) => { skipped.push({ id, reason }); if (blockDomain && domain) blockedQuotaDomains.add(domain); };
 
     if (route?.enabled !== true) { skip("disabled"); continue; }
     if (!domain) { skip("quota-domain-missing"); continue; }
     if (blockedQuotaDomains.has(domain)) { skipped.push({ id, reason: "quota-domain-already-rejected" }); continue; }
-    if (route?.billingStatus !== "free_verified" || route?.paidBudgetEur !== 0) { skip("free-billing-not-verified"); continue; }
-    if (route?.quotaVerified !== true) { skip("quota-not-verified"); continue; }
+    if (route?.billingStatus !== "free_verified" || route?.paidBudgetEur !== 0) { skip("free-billing-not-verified", true); continue; }
+    if (route?.quotaVerified !== true) { skip("quota-not-verified", true); continue; }
 
     const checkedAt = typeof route.quotaCheckedAt === "number" ? route.quotaCheckedAt : Date.parse(route.quotaCheckedAt);
     if (!Number.isFinite(checkedAt) || checkedAt > now || now - checkedAt > maxSnapshotAgeMs) {
-      skip("quota-snapshot-stale"); continue;
+      skip("quota-snapshot-stale", true); continue;
     }
     if (!Number.isSafeInteger(route.remainingRequests) || route.remainingRequests < 1) {
-      skip("request-quota-insufficient"); continue;
+      skip("request-quota-insufficient", true); continue;
     }
     const requiredTokens = inputTokens + maxOutputTokens + safetyTokens;
     if (!Number.isSafeInteger(route.remainingTokens) || route.remainingTokens < requiredTokens) {
-      skip("token-headroom-insufficient"); continue;
+      skip("token-headroom-insufficient", true); continue;
     }
     if (typeof route.provider !== "string" || !route.provider || typeof route.model !== "string" || !route.model) {
       skip("provider-or-model-missing"); continue;
