@@ -256,11 +256,7 @@ $('aiDraft').addEventListener('click',async()=>{
     return;
   }
   const requestedSource=$('source').value.trim();
-  if(taskType==='seo' && requestedSource && (!auditEvidence || auditEvidenceUrl!==requestedSource)){
-    $('auditStatus').style.color='var(--warn)';
-    $('auditStatus').textContent='Pre AI nacrta prvo pokreni „Pokreni stvarnu SEO proveru“ za ovaj URL. Trenutni URL nema odgovarajući audit dokaz u ovoj sesiji; AI nije pozvan.';
-    return;
-  }
+  const auditEvidenceMatches=Boolean(auditEvidence && auditEvidenceUrl===requestedSource);
   button.disabled=true;
   button.textContent='Generisanje u toku…';
   button.setAttribute('aria-busy','true');
@@ -276,8 +272,9 @@ $('aiDraft').addEventListener('click',async()=>{
       source?'URL ZA PROVERU: '+source:'',
       deadline?'Interni rok: '+deadline:'',
       currentFacts?'Proverene činjenice / ograničenja:\n'+currentFacts:'',
-      (auditEvidence && auditEvidenceUrl===source)?'STVARNI SEO AUDIT (dokazi):\n'+auditEvidence:'',
-      !auditEvidence&&artifact&&!artifact.startsWith('# AI RADNI NACRT')?'Postojeći radni rezultat (nije automatski potvrđen kao dokaz):\n'+artifact:''
+      auditEvidenceMatches?'STVARNI SEO AUDIT (dokazi) za ovaj URL:\n'+auditEvidence:'',
+      taskType==='seo'&&source&&!auditEvidenceMatches?'VAŽNO OGRANIČENJE: SEO audit dokazi nisu prikupljeni u ovoj sesiji za ovaj URL. Napravi samo preliminarni plan provere; ne tvrdi da je sajt testiran i ne izmišljaj metrike.':'',
+      !auditEvidenceMatches&&artifact&&!artifact.startsWith('# AI RADNI NACRT')?'Postojeći radni rezultat (nije automatski potvrđen kao dokaz):\n'+artifact:''
     ].filter(Boolean).join('\n\n').slice(0,4000);
     const aiToken=$('aiToken').value.trim();
     const headers={'Content-Type':'application/json'};
