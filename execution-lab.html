@@ -91,7 +91,9 @@ function build(){
   }finally{$('build').disabled=false;}
 }
 function blobDownload(name,text,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-function renderRecords(){$('records').innerHTML=records.length?records.slice().reverse().map((r,i)=>'<div class="status"><strong>'+esc(r.title)+'</strong> · '+esc(r.createdAt)+' · QA '+esc(r.qaCount)+'/'+esc(r.qaTotal)+' <button data-open="'+esc(r.id)+'">Otvori</button></div>').join(''):'Nema sačuvanih zapisa.'}
+function renderRecords(){
+  $('records').innerHTML=records.length?records.slice().reverse().map(r=>'<div class="status"><strong>'+esc(r.title||'Zadatak bez naziva')+'</strong> · '+esc(r.createdAt||'datum nije poznat')+' · QA '+esc(r.qaCount??0)+'/'+esc(r.qaTotal??0)+' <button type="button" data-open="'+esc(r.id)+'">Otvori</button></div>').join(''):'Nema sačuvanih zapisa.';
+}
 $('build').addEventListener('click',build);
 $('taskType').addEventListener('change',()=>{$('audit').hidden=$('taskType').value!=='seo';renderProcedure();});
 function formatSeoAudit(data,title='SEO provera'){
@@ -352,7 +354,7 @@ $('save').addEventListener('click',()=>{
   try{
     const now=new Date().toISOString(),title=$('title').value.trim();
     const existing=(activeRecordId&&records.find(r=>r.id===activeRecordId))||records.slice().reverse().find(r=>r.title===title&&r.artifact===artifact);
-    const rec={id:existing?.id||(crypto.randomUUID?crypto.randomUUID():String(Date.now())),title,createdAt:existing?.createdAt||now,updatedAt:existing?now:undefined,artifact,qaCount:getChecks().filter(x=>x.checked).length,qaTotal:getChecks().length,qa:getChecks().map(x=>({label:x.parentElement.textContent.trim(),checked:x.checked})),status:'DRAFT_NOT_SENT'};
+    const rec={id:existing?.id||(crypto.randomUUID?crypto.randomUUID():String(Date.now())),title,createdAt:existing?.createdAt||now,updatedAt:existing?now:undefined,taskType:$('taskType').value,brief:$('brief').value,source:$('source').value,deadline:$('deadline').value,facts:$('facts').value,artifact,qaCount:getChecks().filter(x=>x.checked).length,qaTotal:getChecks().length,qa:getChecks().map(x=>({key:x.value,label:x.parentElement.textContent.trim(),checked:x.checked})),status:'DRAFT_NOT_SENT'};
     const nextRecords=existing?records.map(r=>r.id===existing.id?{...r,...rec}:r):[...records,rec];
     localStorage.setItem(KEY,JSON.stringify(nextRecords));records=nextRecords;activeRecordId=rec.id;
     $('saved').style.color='var(--accent)';
@@ -369,10 +371,22 @@ $('records').addEventListener('click',e=>{
   try{
     const r=records.find(x=>x.id===b.dataset.open);
     if(!r){$('saved').style.color='var(--bad)';$('saved').textContent='Zapis nije pronađen u lokalnoj evidenciji. Osveži listu i pokušaj ponovo.';return;}
-    activeRecordId=r.id;artifact=r.artifact;$('output').textContent=artifact;$('title').value=r.title;
+    if(typeof r.artifact!=='string'||!r.artifact.trim())throw new Error('Sačuvani zapis nema radni rezultat.');
+    // Restore the complete task specification before rebuilding its QA controls.
+    $('taskType').value=procedures[r.taskType]?r.taskType:'seo';
+    $('title').value=r.title||'';
+    $('brief').value=typeof r.brief==='string'?r.brief:'';
+    $('source').value=typeof r.source==='string'?r.source:'';
+    $('deadline').value=typeof r.deadline==='string'?r.deadline:'';
+    $('facts').value=typeof r.facts==='string'?r.facts:'';
+    renderProcedure();
+    const savedChecks=new Map((Array.isArray(r.qa)?r.qa:[]).map((q,i)=>[q.key||String(i),Boolean(q.checked)]));
+    getChecks().forEach((x,i)=>{x.checked=savedChecks.has(x.value)?savedChecks.get(x.value):Boolean(r.qa?.[i]?.checked)});
+    activeRecordId=r.id;artifact=r.artifact;$('output').textContent=artifact;
     $('copy').disabled=$('download').disabled=$('save').disabled=!Boolean(artifact);
-    $('saved').style.color='var(--accent)';$('saved').textContent='Učitano iz lokalne evidencije; nacrt nije poslat.';
-    getChecks().forEach((x,i)=>x.checked=Boolean(r.qa?.[i]?.checked));qa();
+    qa();
+    $('saved').style.color='var(--accent)';
+    $('saved').textContent=(r.brief===undefined?'Zapis otvoren; starija verzija ne sadrži sva polja specifikacije. ':'')+'Zapis je učitan u formu i radni rezultat. Nacrt nije poslat.';
   }catch(error){
     $('saved').style.color='var(--bad)';$('saved').textContent='Otvaranje zapisa nije uspelo: '+(error instanceof Error?error.message:'nepoznata greška')+'.';
   }finally{b.disabled=false;}
@@ -380,8 +394,20 @@ $('records').addEventListener('click',e=>{
 $('exportJson').addEventListener('click',()=>{
   const button=$('exportJson');if(button.disabled)return;button.disabled=true;
   try{
+    // Re-read this origin's storage immediately before export so the download matches the visible local ledger.
+    const stored=localStorage.getItem(KEY);
+    if(stored!==null){
+      const parsed=JSON.parse(stored);
+      if(!Array.isArray(parsed))throw new Error('Lokalna evidencija nije u očekivanom JSON formatu.');
+      records=parsed;
+      renderRecords();
+    }else{
+      records=[];
+      renderRecords();
+    }
     blobDownload('safe-automaton-execution-records.json',JSON.stringify(records,null,2),'application/json;charset=utf-8');
-    $('saved').style.color='var(--accent)';$('saved').textContent='JSON evidencija je pripremljena za preuzimanje.';
+    $('saved').style.color='var(--accent)';
+    $('saved').textContent='JSON evidencija je pripremljena: '+records.length+' sačuvanih zapisa za ovaj host/pregledač.';
   }catch(error){
     $('saved').style.color='var(--bad)';$('saved').textContent='Izvoz JSON evidencije nije uspeo: '+(error instanceof Error?error.message:'nepoznata greška')+'.';
   }finally{button.disabled=false;}
