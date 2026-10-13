@@ -110,7 +110,7 @@ export async function onRequest({ request, env }) {
           "Nikad ne šalji, ne objavljuj, ne prihvataj ugovore, ne izvršavaj kod i ne troši novac.",
           "Vrati praktičan Markdown na srpskom. Faza: " + agent.name + ". Zadatak: " + agent.job,
           "Aktivni skill profil: " + skill.id + " (" + skill.source + ").",
-          "Skill smernice:\\n- " + skill.instructions.join("\\n- "),
+          "Skill smernice:\n- " + skill.instructions.join("\n- "),
           "Runtime politika: " + JSON.stringify(runtimePolicy)
         ].join("\n")
       },
