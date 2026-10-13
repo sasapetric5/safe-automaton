@@ -149,6 +149,6 @@ export async function onRequest({ request, env }) {
     verified: false,
     sent: false,
     externalActionsTaken: false,
-    disclaimer: "Tri AI faze su završene: planiranje, izrada i kritički pregled uz task-specific skill smernice. Nema alata za spoljašnje izvršavanje; ovo nije nezavisna provera. Endpoint ne koristi internet, ne šalje, ne objavljuje i ne troši novac van dozvoljenog Workers AI poziva."
+    disclaimer: "Tri AI faze su završene: planiranje, izrada i kritički pregled uz task-specific skill smernice. Ovo nije nezavisna provera; endpoint ne izvršava alate, ne koristi internet, ne šalje, ne objavljuje i ne troši novac van dozvoljenog Workers AI poziva."
   });
 }
