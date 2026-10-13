@@ -18,6 +18,8 @@ export function buildTelemetryEvent(input = {}, now = new Date().toISOString()) 
     ? Math.min(Math.floor(input.durationMs), 86_400_000) : 0;
   const agentCount = Number.isSafeInteger(input.agentCount) && input.agentCount >= 0
     ? Math.min(input.agentCount, 3) : 0;
+  const providerCalls = Number.isSafeInteger(input.providerCalls) && input.providerCalls >= 0
+    ? Math.min(input.providerCalls, 3) : 0;
   const requestId = typeof input.requestId === "string" && /^[0-9a-f-]{16,64}$/i.test(input.requestId)
     ? input.requestId : createRequestId();
   return {
@@ -29,7 +31,7 @@ export function buildTelemetryEvent(input = {}, now = new Date().toISOString()) 
     code,
     durationMs,
     agentCount,
-    providerCalls: 0,
+    providerCalls,
     externalActionsTaken: false,
     spendingAuthorized: false
   };

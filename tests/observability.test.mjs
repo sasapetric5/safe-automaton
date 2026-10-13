@@ -13,7 +13,7 @@ test("telemetry emits bounded low-sensitivity metadata only", () => {
   const event = buildTelemetryEvent({
     requestId: "12345678-1234-1234-1234-123456789abc",
     taskType: "seo", status: "completed", code: "DRAFT_READY",
-    durationMs: 125, agentCount: 3,
+    durationMs: 125, agentCount: 3, providerCalls: 3,
     prompt: "private prompt", apiKey: "should-never-appear"
   }, "2026-10-13T10:00:00.000Z");
   assert.deepEqual(event, {
@@ -21,7 +21,7 @@ test("telemetry emits bounded low-sensitivity metadata only", () => {
     requestId: "12345678-1234-1234-1234-123456789abc",
     at: "2026-10-13T10:00:00.000Z",
     taskType: "seo", status: "completed", code: "DRAFT_READY",
-    durationMs: 125, agentCount: 3, providerCalls: 0,
+    durationMs: 125, agentCount: 3, providerCalls: 3,
     externalActionsTaken: false, spendingAuthorized: false
   });
   assert.equal(JSON.stringify(event).includes("private prompt"), false);

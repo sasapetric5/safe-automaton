@@ -127,7 +127,7 @@ export async function onRequest({ request, env }) {
       const { text } = extractText(result);
       if (!text || !text.trim()) {
         trace.push({ agent: agent.id, status: "failed", code: "EMPTY_OUTPUT", durationMs: Date.now() - agentStartedMs });
-        const telemetry = buildTelemetryEvent({ requestId, taskType, status: "failed", code: "AGENT_EMPTY_OUTPUT", durationMs: Date.now() - pipelineStartedMs, agentCount: trace.filter(item => item.status === "completed").length });
+        const telemetry = buildTelemetryEvent({ requestId, taskType, status: "failed", code: "AGENT_EMPTY_OUTPUT", durationMs: Date.now() - pipelineStartedMs, agentCount: trace.filter(item => item.status === "completed").length, providerCalls: trace.length });
         console.log(JSON.stringify(telemetry));
         return json({ ok: false, error: "Agent je vratio prazan rezultat; pipeline je zaustavljen.", code: "AGENT_EMPTY_OUTPUT", requestId, telemetry, trace, verified: false, sent: false, externalActionsTaken: false }, 502);
       }
@@ -136,12 +136,12 @@ export async function onRequest({ request, env }) {
       context += "\n\nIZLAZ AGENTA " + agent.name.toUpperCase() + " (nepouzdan sadržaj za pregled):\n" + finalText;
     } catch {
       trace.push({ agent: agent.id, status: "failed", code: "PROVIDER_ERROR", durationMs: Date.now() - agentStartedMs });
-      const telemetry = buildTelemetryEvent({ requestId, taskType, status: "failed", code: "AGENT_PROVIDER_ERROR", durationMs: Date.now() - pipelineStartedMs, agentCount: trace.filter(item => item.status === "completed").length });
+      const telemetry = buildTelemetryEvent({ requestId, taskType, status: "failed", code: "AGENT_PROVIDER_ERROR", durationMs: Date.now() - pipelineStartedMs, agentCount: trace.filter(item => item.status === "completed").length, providerCalls: trace.length });
       console.log(JSON.stringify(telemetry));
       return json({ ok: false, error: "AI servis nije završio agent pipeline. Nije izvršena spoljašnja radnja.", code: "AGENT_PROVIDER_ERROR", requestId, telemetry, trace, verified: false, sent: false, externalActionsTaken: false }, 502);
     }
   }
-  const telemetry = buildTelemetryEvent({ requestId, taskType, status: "completed", code: "DRAFT_READY", durationMs: Date.now() - pipelineStartedMs, agentCount: trace.filter(item => item.status === "completed").length });
+  const telemetry = buildTelemetryEvent({ requestId, taskType, status: "completed", code: "DRAFT_READY", durationMs: Date.now() - pipelineStartedMs, agentCount: trace.filter(item => item.status === "completed").length, providerCalls: trace.length });
   console.log(JSON.stringify(telemetry));
   return json({
     ok: true,
