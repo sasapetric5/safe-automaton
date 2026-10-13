@@ -123,7 +123,11 @@ export async function onRequest(context) {
       { role: "user", content: userPrompt }
     ],
     max_completion_tokens: 900,
-    temperature: 0.2
+    temperature: 0.2,
+    // This is a short work-draft task, not an agentic reasoning task.
+    // Prevent GLM-4.7-Flash from spending the entire completion budget on thinking.
+    reasoning_effort: "low",
+    chat_template_kwargs: { enable_thinking: false }
   };
   let result, callError;
   try {
