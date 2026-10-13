@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { onRequest } from "../functions/api/ai-task.js";
 
+const TEST_TOKEN = "a".repeat(40);
 function request(body, options = {}) {
-  const headers = new Headers(options.headers || {});
+  const headers = new Headers({ "X-Safe-Automaton-AI-Token": options.token ?? TEST_TOKEN, ...(options.headers || {}) });
   if (typeof body === "string") headers.set("Content-Type", "application/json");
   else if (body !== undefined) {
     body = JSON.stringify(body);
@@ -62,6 +63,7 @@ test("AI task endpoint uses the fixed model, bounded output and never claims ver
   let captured;
   const env = {
     SAFE_AUTOMATON_AI_ENABLED: "true",
+    SAFE_AUTOMATON_AI_TOKEN: TEST_TOKEN,
     AI: { run: async (model, input) => {
       captured = { model, input };
       return { response: "## Nacrt\n\nProveri dokaz pre upotrebe." };
@@ -89,7 +91,7 @@ test("AI task endpoint uses the fixed model, bounded output and never claims ver
 
 test("AI task endpoint handles empty model output and provider failure safely", async () => {
   const input = { taskType: "qa", title: "QA", brief: "Napravi plan." };
-  const base = { SAFE_AUTOMATON_AI_ENABLED: "true" };
+  const base = { SAFE_AUTOMATON_AI_ENABLED: "true", SAFE_AUTOMATON_AI_TOKEN: TEST_TOKEN };
   const empty = await call(request(input), { ...base, AI: { run: async () => ({ response: "  " }) } });
   assert.equal(empty.response.status, 502);
   const failed = await call(request(input), { ...base, AI: { run: async () => { throw new Error("secret provider details"); } } });
