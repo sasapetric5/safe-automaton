@@ -20,7 +20,7 @@
 <div class="formrow"><div><label for="source">Javni izvor / URL (opciono)</label><input id="source" type="url" maxlength="1000" placeholder="https://..."></div><div><label for="deadline">Interni rok (opciono)</label><input id="deadline" type="date"></div></div>
 <label for="facts">Proverene činjenice / ograničenja</label><textarea id="facts" maxlength="4000" placeholder="Šta je zaista provereno? Šta nije poznato? Koje tehnologije ili uslovi su obavezni?"></textarea>
 <label for="aiToken">AI pristupni token (nije sačuvan)</label><input id="aiToken" type="password" autocomplete="off" maxlength="256" placeholder="Unesi Cloudflare tajnu SAFE_AUTOMATON_AI_TOKEN"><p class="small">Token se šalje samo ovom endpoint-u i ne čuva se u localStorage niti u radnom rezultatu. Ne stavljaj token u brief ili činjenice.</p>
-<div class="row" style="margin-top:12px"><button class="primary" id="build">Izradi lokalni šablon</button><button id="aiDraft">Izradi AI nacrt (opciono)</button><button id="audit">Pokreni stvarnu SEO proveru</button><button id="reset">Očisti formu</button></div><div id="auditStatus" class="small" aria-live="polite">AI je podrazumevano isključen. Poziv radi samo kada je eksplicitno omogućen na Cloudflare-u; pre toga potvrdi besplatni plan i kvotu.</div>
+<div class="row" style="margin-top:12px"><button class="primary" id="build">Izradi lokalni šablon</button><button id="aiDraft">Izradi AI nacrt (opciono)</button><button id="agentRun">Pokreni 3 AI agenta</button><button id="audit">Pokreni stvarnu SEO proveru</button><button id="reset">Očisti formu</button></div><div id="auditStatus" class="small" aria-live="polite">AI je podrazumevano isključen. Poziv radi samo kada je eksplicitno omogućen na Cloudflare-u; pre toga potvrdi besplatni plan i kvotu.</div>
 </section>
 <section class="card span6"><h2>2. Kontrola kvaliteta</h2><p class="small">Označi samo provere koje si stvarno izvršio. Ove kućice nisu automatski dokazi da je rezultat ispravan.</p>
 <p id="skillInfo" class="small">Procedura i kontrolna lista prilagođavaju se izabranoj vrsti zadatka. Sve provere su ručne.</p>
@@ -310,6 +310,51 @@ $('aiDraft').addEventListener('click',async()=>{
   }finally{
     button.disabled=false;
   }
+});
+$('agentRun').addEventListener('click',async()=>{
+  const button=$('agentRun');
+  const taskType=$('taskType').value;
+  const title=$('title').value.trim();
+  const brief=$('brief').value.trim();
+  const aiToken=$('aiToken').value.trim();
+  if(!title||!brief){
+    $('auditStatus').style.color='var(--bad)';
+    $('auditStatus').textContent='Unesi naslov i brief pre pokretanja agenata.';
+    return;
+  }
+  if(aiToken.length<32){
+    $('auditStatus').style.color='var(--bad)';
+    $('auditStatus').textContent='Unesi AI pristupni token od najmanje 32 karaktera. Token se ne čuva u zapisima.';
+    return;
+  }
+  button.disabled=true;
+  $('auditStatus').style.color='var(--text)';
+  $('auditStatus').textContent='Pokrećem Planner → Specialist → Reviewer. Svaka faza koristi Workers AI; nema alata ni spoljnih radnji.';
+  try{
+    const response=await fetch('/api/agent-run',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},
+      body:JSON.stringify({taskType,title,brief,evidence:($('facts').value.trim()||artifact).slice(0,4000)})
+    });
+    const contentType=response.headers.get('content-type')||'';
+    if(!contentType.includes('application/json'))throw new Error('Server nije vratio JSON (HTTP '+response.status+').');
+    const data=await response.json();
+    if(!response.ok||!data.ok)throw new Error(data.error||data.code||'Agent pipeline nije uspeo (HTTP '+response.status+').');
+    if(typeof data.draft!=='string'||!data.draft.trim())throw new Error('Agent pipeline je vratio prazan rezultat.');
+    const trace=(Array.isArray(data.trace)?data.trace:[]).map(item=>'- '+String(item.name||item.agent||'Agent')+': '+String(item.status||'nepoznato')).join('\n');
+    artifact='# SAFE AUTOMATON — MULTI-AGENT NACRT\n\n## Zadatak\n'+title+'\n\n'+data.draft+'\n\n---\n## Evidencija agent pipeline-a\n'+trace+'\n\nModel: '+String(data.model||'nije naveden')+'\nVreme: '+String(data.generatedAt||'nije navedeno')+'\nNezavisno provereno: ne.\nPoslato/objavljeno: ne.\nSpoljne radnje: nijedna.\nNapomena: '+String(data.disclaimer||'Zahteva ljudski pregled.');
+    activeRecordId=null;
+    $('output').textContent=artifact;
+    $('copy').disabled=$('download').disabled=$('save').disabled=false;
+    getChecks().forEach(x=>x.checked=false);qa();
+    $('saved').style.color='var(--accent)';
+    $('saved').textContent='Multi-agent nacrt je napravljen. Tri faze su završene; rezultat nije nezavisno verifikovan.';
+    $('auditStatus').style.color='var(--accent)';
+    $('auditStatus').textContent='Pipeline završen: '+String(data.agentCount||0)+' agenta/faze. Pregledaj rezultat, pa ručno izvrši QA.';
+  }catch(error){
+    $('auditStatus').style.color='var(--bad)';
+    $('auditStatus').textContent='Multi-agent pipeline nije uspeo: '+(error instanceof Error?error.message:'nepoznata greška')+'. Nije pokrenut lokalni fallback i nije izvršena spoljna radnja.';
+  }finally{button.disabled=false;}
 });
 $('reset').addEventListener('click',()=>{
   if($('reset').disabled)return;
