@@ -5,7 +5,7 @@ import { onRequest } from "../functions/api/agent-run.js";
 const TOKEN = "t".repeat(40);
 function request(body, options = {}) {
   const headers = new Headers({ "Content-Type": "application/json", ...(options.headers || {}) });
-  if (options.token !== false) headers.set("X-Safe-Automaton-AI-Token", options.token || TOKEN);
+  if (options.token !== false) headers.set("X-Safe-Automaton-AI-Token", typeof options.token === "string" ? options.token : TOKEN);
   return new Request("https://safe-automaton.example/api/agent-run", {
     method: options.method || "POST",
     headers,
