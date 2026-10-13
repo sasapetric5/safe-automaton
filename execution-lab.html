@@ -257,7 +257,7 @@ $('aiDraft').addEventListener('click',async()=>{
   button.textContent='Generisanje u toku…';
   button.setAttribute('aria-busy','true');
   $('auditStatus').style.color='var(--text)';
-  $('auditStatus').textContent='AI zahtev je u toku. Sačekaj odgovor; ako servis ne odgovori za 60 sekundi, dugme će se osloboditi i prikazaće se greška.';
+  $('auditStatus').textContent='Proveravam dostupnost AI servisa…';
   let fallbackReason='';
   try{
     const currentFacts=$('facts').value.trim();
@@ -275,22 +275,14 @@ $('aiDraft').addEventListener('click',async()=>{
     const headers={'Content-Type':'application/json'};
     if(aiToken.length>=32)headers['X-Safe-Automaton-AI-Token']=aiToken;
     let response;
-    const controller=new AbortController();
-    const requestTimeout=setTimeout(()=>controller.abort(),60000);
     try{
       response=await fetch('/api/ai-task',{
         method:'POST',
         headers,
-        body:JSON.stringify({taskType,title,brief,source,deadline,facts:currentFacts,evidence}),
-        signal:controller.signal
+        body:JSON.stringify({taskType,title,brief,source,deadline,facts:currentFacts,evidence})
       });
     }catch(error){
-      if(error&&error.name==='AbortError'){
-        throw new Error('AI zahtev nije odgovorio u roku od 60 sekundi. Dugme je oslobođeno; možeš pokušati ponovo bez menjanja brief-a.');
-      }
       fallbackReason='Mrežna greška: '+(error instanceof Error?error.message:'zahtev nije uspeo');
-    }finally{
-      clearTimeout(requestTimeout);
     }
     if(response){
       const contentType=response.headers.get('content-type')||'';
