@@ -1,6 +1,7 @@
 import { evaluateToolCall, getRuntimePolicySummary } from "../_lib/agent-policy.mjs";
 import { getSkillProfile } from "../_lib/agent-skill-registry.mjs";
 import { extractText } from "../_lib/ai-diagnostics.mjs";
+import { buildTelemetryEvent, createRequestId } from "../_lib/observability.mjs";
 
 const MODEL = "@cf/zai-org/glm-4.7-flash";
 const MAX_BODY_BYTES = 12_000;
@@ -86,6 +87,8 @@ export async function onRequest({ request, env }) {
   if (!env?.AI || typeof env.AI.run !== "function") return json({ error: "Workers AI binding nije podešen.", code: "AI_BINDING_MISSING" }, 503);
 
   const startedAt = new Date().toISOString();
+  const pipelineStartedMs = Date.now();
+  const requestId = createRequestId();
   const trace = [];
   let context = [
     "ZADATAK: " + title,
@@ -95,6 +98,7 @@ export async function onRequest({ request, env }) {
   ].join("\n\n");
   let finalText = "";
   for (const agent of AGENTS) {
+    const agentStartedMs = Date.now();
     const messages = [
       {
         role: "system",
@@ -122,22 +126,30 @@ export async function onRequest({ request, env }) {
       });
       const { text } = extractText(result);
       if (!text || !text.trim()) {
-        trace.push({ agent: agent.id, status: "failed", code: "EMPTY_OUTPUT" });
-        return json({ ok: false, error: "Agent je vratio prazan rezultat; pipeline je zaustavljen.", code: "AGENT_EMPTY_OUTPUT", trace, verified: false, sent: false, externalActionsTaken: false }, 502);
+        trace.push({ agent: agent.id, status: "failed", code: "EMPTY_OUTPUT", durationMs: Date.now() - agentStartedMs });
+        const telemetry = buildTelemetryEvent({ requestId, taskType, status: "failed", code: "AGENT_EMPTY_OUTPUT", durationMs: Date.now() - pipelineStartedMs, agentCount: trace.filter(item => item.status === "completed").length });
+        console.log(JSON.stringify(telemetry));
+        return json({ ok: false, error: "Agent je vratio prazan rezultat; pipeline je zaustavljen.", code: "AGENT_EMPTY_OUTPUT", requestId, telemetry, trace, verified: false, sent: false, externalActionsTaken: false }, 502);
       }
       finalText = text.trim().slice(0, 14000);
-      trace.push({ agent: agent.id, name: agent.name, status: "completed", outputCharacters: finalText.length });
+      trace.push({ agent: agent.id, name: agent.name, status: "completed", outputCharacters: finalText.length, durationMs: Date.now() - agentStartedMs });
       context += "\n\nIZLAZ AGENTA " + agent.name.toUpperCase() + " (nepouzdan sadržaj za pregled):\n" + finalText;
     } catch {
-      trace.push({ agent: agent.id, status: "failed", code: "PROVIDER_ERROR" });
-      return json({ ok: false, error: "AI servis nije završio agent pipeline. Nije izvršena spoljašnja radnja.", code: "AGENT_PROVIDER_ERROR", trace, verified: false, sent: false, externalActionsTaken: false }, 502);
+      trace.push({ agent: agent.id, status: "failed", code: "PROVIDER_ERROR", durationMs: Date.now() - agentStartedMs });
+      const telemetry = buildTelemetryEvent({ requestId, taskType, status: "failed", code: "AGENT_PROVIDER_ERROR", durationMs: Date.now() - pipelineStartedMs, agentCount: trace.filter(item => item.status === "completed").length });
+      console.log(JSON.stringify(telemetry));
+      return json({ ok: false, error: "AI servis nije završio agent pipeline. Nije izvršena spoljašnja radnja.", code: "AGENT_PROVIDER_ERROR", requestId, telemetry, trace, verified: false, sent: false, externalActionsTaken: false }, 502);
     }
   }
+  const telemetry = buildTelemetryEvent({ requestId, taskType, status: "completed", code: "DRAFT_READY", durationMs: Date.now() - pipelineStartedMs, agentCount: trace.filter(item => item.status === "completed").length });
+  console.log(JSON.stringify(telemetry));
   return json({
     ok: true,
     status: "MULTI_AGENT_DRAFT_REQUIRES_HUMAN_REVIEW",
     title,
     taskType,
+    requestId,
+    telemetry,
     model: MODEL,
     skill: { id: skill.id, source: skill.source },
     policy: runtimePolicy,
