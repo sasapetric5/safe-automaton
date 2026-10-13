@@ -20,7 +20,7 @@
 <div class="formrow"><div><label for="source">Javni izvor / URL (opciono)</label><input id="source" type="url" maxlength="1000" placeholder="https://..."></div><div><label for="deadline">Interni rok (opciono)</label><input id="deadline" type="date"></div></div>
 <label for="facts">Proverene činjenice / ograničenja</label><textarea id="facts" maxlength="4000" placeholder="Šta je zaista provereno? Šta nije poznato? Koje tehnologije ili uslovi su obavezni?"></textarea>
 <label for="aiToken">AI pristupni token (nije sačuvan)</label><input id="aiToken" type="password" autocomplete="off" maxlength="256" placeholder="Unesi Cloudflare tajnu SAFE_AUTOMATON_AI_TOKEN"><p class="small">Token se šalje samo ovom endpoint-u i ne čuva se u localStorage niti u radnom rezultatu. Ne stavljaj token u brief ili činjenice.</p>
-<div class="row" style="margin-top:12px"><button class="primary" id="build">Izradi lokalni šablon</button><button id="aiDraft">Izradi AI nacrt (opciono)</button><button id="audit">Pokreni stvarnu SEO proveru</button><button id="reset">Očisti formu</button></div><div id="auditStatus" class="small" aria-live="polite">AI je podrazumevano isključen. Poziv radi samo kada je eksplicitno omogućen na Cloudflare-u; pre toga potvrdi besplatni plan i kvotu.</div>
+<div class="row" style="margin-top:12px"><button class="primary" id="build">Izradi lokalni šablon</button><button id="aiDraft">Izradi AI nacrt (opciono)</button><button id="audit">Pokreni stvarnu SEO proveru</button><button id="agentRun">Pokreni 3 AI agenta</button><button id="reset">Očisti formu</button></div><div id="auditStatus" class="small" aria-live="polite">AI je podrazumevano isključen. Poziv radi samo kada je eksplicitno omogućen na Cloudflare-u; pre toga potvrdi besplatni plan i kvotu.</div>
 </section>
 <section class="card span6"><h2>2. Kontrola kvaliteta</h2><p class="small">Označi samo provere koje si stvarno izvršio. Ove kućice nisu automatski dokazi da je rezultat ispravan.</p>
 <p id="skillInfo" class="small">Procedura i kontrolna lista prilagođavaju se izabranoj vrsti zadatka. Sve provere su ručne.</p>
@@ -176,6 +176,40 @@ $('aiDraft').addEventListener('click',async()=>{
     } catch {}
     $('auditStatus').textContent='AI nacrt nije napravljen: '+message+diagnostic+'. Model nije pozvan ako je endpoint odbio zahtev pre inference-a.';
   }finally{$('aiDraft').disabled=false;}
+});
+$('agentRun').addEventListener('click',async()=>{
+  const taskType=$('taskType').value;
+  const title=$('title').value.trim();
+  const brief=$('brief').value.trim();
+  if(!title||!brief){$('auditStatus').textContent='Unesi naslov i brief pre pokretanja agenata.';return;}
+  const evidence=($('facts').value.trim()||artifact).slice(0,4000);
+  const aiToken=$('aiToken').value.trim();
+  if(aiToken.length<32){$('auditStatus').textContent='Unesi AI pristupni token (najmanje 32 znaka); token nije sačuvan.';return;}
+  $('agentRun').disabled=true;
+  $('auditStatus').textContent='Agent 1/3 · Planner priprema plan…';
+  try{
+    const response=await fetch('/api/agent-run',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
+    const data=await response.json();
+    if(!response.ok||!data.ok){
+      const completed=Array.isArray(data.completedAgents)?data.completedAgents:[];
+      if(completed.length){
+        artifact='# TOK 3 AI AGENTA — DELIMIČAN REZULTAT\n\n'+completed.map(a=>'## '+a.name+'\n\n'+a.output).join('\n\n---\n\n')+'\n\n## Status\nTok nije završen. Agent koji nije uspeo: '+(data.failedAgent||'nepoznat')+'. Ne predstavljati kao završen rezultat.';
+        activeRecordId=null;$('output').textContent=artifact;
+        $('copy').disabled=$('download').disabled=$('save').disabled=false;
+        getChecks().forEach(x=>x.checked=false);qa();
+      }
+      throw new Error((data.error||'Tok agenata nije uspeo')+(data.failedAgent?' (zaustavljeno kod: '+data.failedAgent+')':''));
+    }
+    artifact='# REZULTAT TOKA 3 AI AGENTA — '+title+'\n\n'+data.agents.map(a=>'## '+a.name+'\n\n'+a.output).join('\n\n---\n\n')+'\n\n---\n\n## Završni rezultat za ljudski pregled\n\n'+data.finalDraft+'\n\n## Status\n'+data.status+'\nModel: '+data.model+'\nVreme: '+data.generatedAt+'\nNezavisno provereno: ne. Poslato klijentu: ne. Spoljne radnje: nijedna.';
+    activeRecordId=null;$('output').textContent=artifact;
+    $('copy').disabled=$('download').disabled=$('save').disabled=false;
+    getChecks().forEach(x=>x.checked=false);qa();
+    $('saved').textContent='Tri AI koraka su završena. Rezultat nije nezavisno proveren niti poslat.';
+    $('auditStatus').textContent='Završeno: Planner → Specialist → Reviewer. Pročitaj izlaze sva tri agenta i završni rezultat.';
+  }catch(error){
+    const message=error instanceof Error?error.message:'nepoznata greška';
+    $('auditStatus').textContent='Tok 3 AI agenta nije završen: '+message+'. Nema spoljne radnje.';
+  }finally{$('agentRun').disabled=false;}
 });
 $('reset').addEventListener('click',()=>{['title','brief','source','deadline','facts','aiToken'].forEach(id=>$(id).value='');artifact='';activeRecordId=null;$('output').textContent='Forma je očišćena.';$('copy').disabled=$('download').disabled=$('save').disabled=true;getChecks().forEach(x=>x.checked=false);qa()});
 getChecks().forEach(x=>x.addEventListener('change',qa));
