@@ -239,6 +239,9 @@ $('audit').addEventListener('click',async()=>{
 });
 $('aiDraft').addEventListener('click',async()=>{
   const button=$('aiDraft');
+  // A disabled button prevents duplicate submissions; the request timeout below
+  // guarantees that a stalled fetch cannot leave it disabled indefinitely.
+  if(button.disabled)return;
   const taskType=$('taskType').value;
   const title=$('title').value.trim();
   const brief=$('brief').value.trim();
@@ -248,8 +251,9 @@ $('aiDraft').addEventListener('click',async()=>{
     return;
   }
   button.disabled=true;
+  button.setAttribute('aria-busy','true');
   $('auditStatus').style.color='var(--text)';
-  $('auditStatus').textContent='Proveravam dostupnost AI servisa…';
+  $('auditStatus').textContent='AI zahtev je u toku. Sačekaj odgovor; ako servis ne odgovori za 60 sekundi, dugme će se osloboditi i prikazaće se greška.';
   let fallbackReason='';
   try{
     const evidence=($('facts').value.trim()||artifact).slice(0,4000);
@@ -257,10 +261,22 @@ $('aiDraft').addEventListener('click',async()=>{
     const headers={'Content-Type':'application/json'};
     if(aiToken.length>=32)headers['X-Safe-Automaton-AI-Token']=aiToken;
     let response;
+    const controller=new AbortController();
+    const requestTimeout=setTimeout(()=>controller.abort(),60000);
     try{
-      response=await fetch('/api/ai-task',{method:'POST',headers,body:JSON.stringify({taskType,title,brief,evidence})});
+      response=await fetch('/api/ai-task',{
+        method:'POST',
+        headers,
+        body:JSON.stringify({taskType,title,brief,evidence}),
+        signal:controller.signal
+      });
     }catch(error){
+      if(error&&error.name==='AbortError'){
+        throw new Error('AI zahtev nije odgovorio u roku od 60 sekundi. Dugme je oslobođeno; možeš pokušati ponovo bez menjanja brief-a.');
+      }
       fallbackReason='Mrežna greška: '+(error instanceof Error?error.message:'zahtev nije uspeo');
+    }finally{
+      clearTimeout(requestTimeout);
     }
     if(response){
       const contentType=response.headers.get('content-type')||'';
@@ -309,6 +325,7 @@ $('aiDraft').addEventListener('click',async()=>{
     $('auditStatus').textContent=message+(error&&error.diagnostics?'\nDijagnostika (bez sadržaja prompta i nacrta):\n'+JSON.stringify(error.diagnostics,null,2):'');
   }finally{
     button.disabled=false;
+    button.removeAttribute('aria-busy');
   }
 });
 $('agentRun').addEventListener('click',async()=>{
