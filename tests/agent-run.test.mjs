@@ -26,7 +26,14 @@ test("agent endpoint requires POST, same origin, valid input and valid token", a
   assert.equal((await call(request(valid, { headers: { Origin: "https://evil.example" } }), env())).response.status, 403);
   assert.equal((await call(request({ ...valid, taskType: "shell" }), env())).response.status, 400);
   assert.equal((await call(request(valid, { token: "" }), env())).response.status, 401);
-  assert.equal((await call(request(valid), {})).response.status, 503);
+  const missingFlag = await call(request(valid), {});
+  assert.equal(missingFlag.response.status, 503);
+  assert.equal(missingFlag.data.diagnosticCode, "AI_ENABLE_FLAG_MISSING_AT_RUNTIME");
+  assert.equal(missingFlag.data.modelInvoked, false);
+  assert.equal(missingFlag.data.runtimeBindings.enableFlagPresent, false);
+  assert.equal(missingFlag.data.runtimeBindings.tokenBindingPresent, false);
+  assert.equal(missingFlag.data.runtimeBindings.aiBindingPresent, false);
+  assert.doesNotMatch(JSON.stringify(missingFlag.data), new RegExp(TOKEN));
 });
 
 test("three agents run sequentially and return a human-review draft without external actions", async () => {

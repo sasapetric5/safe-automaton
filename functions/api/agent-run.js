@@ -40,9 +40,33 @@ export async function onRequest(context) {
   if (!TASKS.has(taskType)) return json({ error: "Nepoznat tip zadatka." }, 400);
   if (!title || !brief) return json({ error: "Naslov i brief su obavezni." }, 400);
 
+  // Diagnose Preview/Production runtime configuration without exposing secret values.
   const enabled = context.env?.SAFE_AUTOMATON_AI_ENABLED;
-  if (!(enabled === true || (typeof enabled === "string" && enabled.trim().toLowerCase() === "true"))) {
-    return json({ error: "AI nije eksplicitno omogućen u ovom runtime okruženju. Model nije pozvan." }, 503);
+  const enabledNormalized = typeof enabled === "string" ? enabled.trim().toLowerCase() : enabled;
+  if (enabledNormalized !== true && enabledNormalized !== "true") {
+    const tokenBinding = context.env?.SAFE_AUTOMATON_AI_TOKEN;
+    return json({
+      error: "AI nije eksplicitno omogućen u ovom runtime okruženju. Model nije pozvan.",
+      diagnosticCode: enabled === undefined ? "AI_ENABLE_FLAG_MISSING_AT_RUNTIME" : "AI_ENABLE_FLAG_NOT_TRUE",
+      runtimeHost: new URL(request.url).hostname,
+      observedEnableFlag: enabled === undefined
+        ? "missing"
+        : typeof enabled === "string"
+          ? (enabledNormalized === "true" ? "string_true" : "string_other")
+          : typeof enabled === "boolean" && enabled
+            ? "boolean_true"
+            : "other_type",
+      runtimeBindings: {
+        envObjectPresent: context.env != null,
+        enableFlagPresent: enabled !== undefined,
+        tokenBindingPresent: typeof tokenBinding === "string" && tokenBinding.length > 0,
+        aiBindingPresent: Boolean(context.env?.AI && typeof context.env.AI.run === "function")
+      },
+      modelInvoked: false,
+      verified: false,
+      sent: false,
+      externalActionsTaken: false
+    }, 503);
   }
   const expected = context.env?.SAFE_AUTOMATON_AI_TOKEN;
   const supplied = request.headers.get("X-Safe-Automaton-AI-Token") || "";
