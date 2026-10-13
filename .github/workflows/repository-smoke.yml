@@ -24,4 +24,4 @@ jobs:
         with:
           node-version: 22
       - name: Run repository and AI diagnostics tests
-        run: node --test tests/repository-smoke.test.mjs tests/seo-audit-v2.test.mjs tests/ai-diagnostics.test.mjs tests/agent-run.test.mjs tests/gemini-key-pool.test.mjs tests/ai-failover.test.mjs tests/agent-policy.test.mjs tests/agent-skill-registry.test.mjs tests/agent-memory.test.mjs tests/inference-router.test.mjs tests/observability.test.mjs tests/task-scheduler.test.mjs
+        run: node --test tests/repository-smoke.test.mjs tests/seo-audit-v2.test.mjs tests/ai-diagnostics.test.mjs tests/agent-run.test.mjs tests/gemini-key-pool.test.mjs tests/ai-failover.test.mjs tests/agent-policy.test.mjs tests/agent-skill-registry.test.mjs tests/agent-memory.test.mjs tests/inference-router.test.mjs tests/observability.test.mjs tests/task-scheduler.test.mjs tests/sandbox.test.mjs
