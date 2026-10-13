@@ -1,0 +1,25 @@
+name: Replica agent coordinator tests
+
+on:
+  push:
+    branches:
+      - feat/replica-skill-pack
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  agent-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run coordinator and existing AI endpoint tests
+        run: node --test tests/agent-orchestrator.test.mjs tests/ai-task-endpoint.test.mjs
