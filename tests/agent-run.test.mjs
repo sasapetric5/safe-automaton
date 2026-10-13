@@ -35,7 +35,7 @@ test("agent runtime fails closed when disabled, token missing, or binding missin
   let calls = 0;
   const ai = { run: async () => { calls++; return { response: "ok" }; } };
   assert.equal((await call(request(input), { AI: ai })).response.status, 503);
-  assert.equal((await call(request(input, { headers: auth }), { ...enabled, AI: ai })).response.status, 503);
+  assert.equal((await call(request(input, { headers: auth }), { ...enabled })).response.status, 503);
   assert.equal((await call(request(input), { ...enabled, AI: ai })).response.status, 401);
   assert.equal(calls, 0);
 });
@@ -53,8 +53,8 @@ test("agent pipeline runs planner, specialist and reviewer in order and labels o
   assert.deepEqual(data.trace.map(item => item.agent), ["planner", "specialist", "reviewer"]);
   assert.equal(seen.length, 3);
   assert.ok(seen.every(item => item.model === "@cf/zai-org/glm-4.7-flash"));
-  assert.ok(seen[1].payload.messages[1].content.includes("FAZA PLANNER"));
-  assert.ok(seen[2].payload.messages[1].content.includes("FAZA SPECIALIST"));
+  assert.ok(seen[1].payload.messages[1].content.includes("IZLAZ AGENTA PLANNER"));
+  assert.ok(seen[2].payload.messages[1].content.includes("IZLAZ AGENTA SPECIALIST"));
   assert.equal(data.verified, false);
   assert.equal(data.sent, false);
   assert.equal(data.externalActionsTaken, false);
