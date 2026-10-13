@@ -67,3 +67,27 @@ Razvojni prototip za istraživanje javnih poslovnih prilika, procenu izvodljivos
 Није дефинисана у овој почетној верзији.
 
 <!-- Preview/production deployment verification marker: 2026-10-12 -->
+
+## Guarded multi-agent runtime (development)
+
+The Execution Lab includes an optional three-stage AI pipeline at `POST /api/agent-run`:
+
+1. **Planner** — turns the brief into a structured plan and lists assumptions/unknowns.
+2. **Specialist** — prepares the task-specific work draft.
+3. **Reviewer** — critiques the draft for unsupported claims, omissions, risks and missing QA.
+
+This is an adapted Cloudflare Workers AI implementation inspired by the separation of concerns in Conway Research's Automaton (MIT-licensed). It is **not** a direct port of Conway's long-running Node.js runtime: this Pages-compatible pipeline does not provide shell execution, filesystem tools, autonomous web browsing, persistent agent memory, local worker orchestration, wallets, or self-modification. It uses the existing Workers AI binding and calls the model once per stage; check the account's actual quota and plan before enabling it.
+
+### Safety contract
+
+- Disabled unless `SAFE_AUTOMATON_AI_ENABLED=true`, `SAFE_AUTOMATON_AI_TOKEN` is configured as a Cloudflare secret (32+ characters), and the `AI` binding is available.
+- Each request requires the matching `X-Safe-Automaton-AI-Token`; the UI never persists the token.
+- Three bounded model calls, strict task allowlist, input size limits, no external tools or network browsing, no shell/code execution, no wallet access, no sending, publishing, contract acceptance or autonomous spending.
+- Output and trace are labelled as unverified and require human review. A failed/empty stage stops the pipeline; no successful result is fabricated.
+- Existing one-shot AI draft remains available as a simpler fallback. Local templates, QA, saved records and exports remain available independently of AI.
+- USDC receiving/payment support is not part of this runtime. Any future wallet integration must keep receiving funds separate from agent spending and must not expose private keys to the browser or repository.
+
+### Current test coverage
+
+The repository smoke workflow runs the baseline checks plus `tests/agent-run.test.mjs`, which tests disabled-by-default behavior, origin/token/binding checks, three-stage ordering, empty output, provider failure, and no false verification claims. Tests use a mock AI binding and do not call a real model.
+
