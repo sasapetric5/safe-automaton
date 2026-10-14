@@ -202,7 +202,7 @@ $('agentRun').addEventListener('click',async()=>{
       }
       throw new Error((data.error||'Tok agenata nije uspeo')+(data.failedAgent?' (zaustavljeno kod: '+data.failedAgent+')':''));
     }
-    artifact='# REZULTAT TOKA 3 AI AGENTA — '+title+'\n\n'+data.agents.map(a=>'## '+a.name+'\n\n'+a.output).join('\n\n---\n\n')+'\n\n---\n\n## Završni rezultat za ljudski pregled\n\n'+data.finalDraft+'\n\n## Status\n'+data.status+'\nModel: '+data.model+'\nVreme: '+data.generatedAt+'\nNezavisno provereno: ne. Poslato klijentu: ne. Spoljne radnje: nijedna.';
+    artifact='# REZULTAT TOKA 3 AI AGENTA — '+title+'\n\n'+data.agents.map(a=>'## '+a.name+'\n\n'+a.output).join('\n\n---\n\n')+'\n\n---\n\n## Završni rezultat za ljudski pregled\n\n'+data.finalDraft+'\n\n## Status\n'+data.status+'\nProvajderi/modeli: '+data.agents.map(a=>a.provider+' / '+a.model).join(', ')+'\nVreme: '+data.generatedAt+'\nNezavisno provereno: ne. Poslato klijentu: ne. Spoljne radnje: nijedna.';
     activeRecordId=null;$('output').textContent=artifact;
     $('copy').disabled=$('download').disabled=$('save').disabled=false;
     getChecks().forEach(x=>x.checked=false);qa();
