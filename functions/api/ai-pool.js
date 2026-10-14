@@ -1,7 +1,7 @@
 const MAX_BODY_BYTES = 12_000;
 const MAX_TEXT = 4_000;
 const TASKS = new Set(["seo", "research", "qa", "scope"]);
-const DEFAULT_ORDER = ["cloudflare", "groq", "cerebras", "openrouter", "huggingface", "deepseek", "xai"];
+const DEFAULT_ORDER = ["gemini_primary", "gemini_secondary", "gemini_tertiary", "cloudflare", "groq", "cerebras", "openrouter", "huggingface", "deepseek", "xai"];
 const PROVIDERS = {
   cloudflare: { kind: "workers-ai", model: "@cf/zai-org/glm-4.7-flash", approval: "SAFE_AUTOMATON_CLOUDFLARE_FREE_ONLY" },
   groq: { kind: "openai", baseUrl: "https://api.groq.com/openai/v1", key: "GROQ_API_KEY", approval: "SAFE_AUTOMATON_GROQ_FREE_ONLY", model: "SAFE_AUTOMATON_GROQ_MODEL" },
