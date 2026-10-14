@@ -30,7 +30,7 @@ function baseEnv(extra = {}) {
 test("Free AI Pool is opt-in, requires a valid owner token, and rejects invalid requests", async () => {
   assert.equal((await call(request(), {})).response.status, 503);
   assert.equal((await call(request(), baseEnv({ SAFE_AUTOMATON_FREE_POOL_ENABLED: "false" }))).data.diagnosticCode, "FREE_POOL_DISABLED");
-  assert.equal((await call(request(), baseEnv(), { token: false })).response.status, 200); // valid request uses the test token by default
+  assert.equal((await call(request(), baseEnv())).response.status, 200);
   assert.equal((await call(request(body, { token: "" }), baseEnv())).response.status, 401);
   assert.equal((await call(request(body, { headers: { Origin: "https://evil.example" } }), baseEnv())).response.status, 403);
   assert.equal((await call(request({ ...body, taskType: "shell" }), baseEnv())).response.status, 400);
