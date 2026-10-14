@@ -82,6 +82,7 @@ jobs:
           done < /tmp/changed-files.txt
 
       - name: Run focused regression tests
+        id: tests
         if: always() && steps.approval.outputs.approved == 'true' && steps.key.outputs.configured == 'true'
         run: |
           git diff --check
