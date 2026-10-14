@@ -107,3 +107,35 @@ test("when every provider fails, endpoint reports safe status and does not claim
   assert.equal(data.sent, false);
   assert.doesNotMatch(JSON.stringify(data), /internal secret/);
 });
+
+
+test("Gemini model slots fall back in order before moving to another provider", async () => {
+  const originalFetch = globalThis.fetch;
+  const seenModels = [];
+  globalThis.fetch = async (url, options) => {
+    const payload = JSON.parse(options.body);
+    seenModels.push(payload.model);
+    if (payload.model === "gemini-3.8-flash") {
+      return new Response(JSON.stringify({ error: { message: "quota", code: 429 } }), { status: 429, headers: { "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify({ choices: [{ message: { content: "Fallback model draft" } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const env = baseEnv({
+      SAFE_AUTOMATON_AI_ORDER: "gemini_primary,gemini_secondary",
+      SAFE_AUTOMATON_GEMINI_FREE_ONLY: "YES_FREE_ONLY",
+      SAFE_AUTOMATON_GEMINI_MODEL_PRIMARY: "gemini-3.8-flash",
+      SAFE_AUTOMATON_GEMINI_MODEL_SECONDARY: "gemini-3.6-flash",
+      GEMINI_API_KEY: "secret-gemini"
+    });
+    const { response, data } = await call(request(), env);
+    assert.equal(response.status, 200);
+    assert.deepEqual(seenModels, [
+      "gemini-3.8-flash", "gemini-3.6-flash",
+      "gemini-3.8-flash", "gemini-3.6-flash",
+      "gemini-3.8-flash", "gemini-3.6-flash"
+    ]);
+    assert.ok(data.agents.every(a => a.provider === "gemini_secondary" && a.model === "gemini-3.6-flash"));
+    assert.doesNotMatch(JSON.stringify(data), /secret-gemini/);
+  } finally { globalThis.fetch = originalFetch; }
+});
