@@ -3,7 +3,7 @@ const MAX_TEXT = 4_000;
 const TASKS = new Set(["seo", "research", "qa", "scope"]);
 const DEFAULT_ORDER = ["cloudflare", "groq", "cerebras", "openrouter", "huggingface", "deepseek", "xai"];
 const PROVIDERS = {
-  cloudflare: { kind: "workers-ai", model: "@cf/zai-org/glm-4.7-flash" },
+  cloudflare: { kind: "workers-ai", model: "@cf/zai-org/glm-4.7-flash", approval: "SAFE_AUTOMATON_CLOUDFLARE_FREE_ONLY" },
   groq: { kind: "openai", baseUrl: "https://api.groq.com/openai/v1", key: "GROQ_API_KEY", approval: "SAFE_AUTOMATON_GROQ_FREE_ONLY", model: "SAFE_AUTOMATON_GROQ_MODEL" },
   cerebras: { kind: "openai", baseUrl: "https://api.cerebras.ai/v1", key: "CEREBRAS_API_KEY", approval: "SAFE_AUTOMATON_CEREBRAS_FREE_ONLY", model: "SAFE_AUTOMATON_CEREBRAS_MODEL" },
   openrouter: { kind: "openai", baseUrl: "https://openrouter.ai/api/v1", key: "OPENROUTER_API_KEY", approval: "SAFE_AUTOMATON_OPENROUTER_FREE_ONLY", model: "SAFE_AUTOMATON_OPENROUTER_MODEL", requireFreeModel: true },
@@ -112,7 +112,7 @@ export async function onRequest(context) {
 }
 
 function isAvailable(id, config, env) {
-  if (id === "cloudflare") return Boolean(env.AI && typeof env.AI.run === "function");
+  if (id === "cloudflare") return env[config.approval] === "YES_FREE_ONLY" && Boolean(env.AI && typeof env.AI.run === "function");
   const approval = env[config.approval];
   const key = env[config.key];
   const model = env[config.model];
