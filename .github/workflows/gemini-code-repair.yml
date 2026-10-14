@@ -55,8 +55,8 @@ jobs:
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           gemini_cli_version: latest
-          # Stable Flash default; can be overridden with the non-secret GEMINI_AGENT_MODEL repository variable.
-          gemini_model: ${{ vars.GEMINI_AGENT_MODEL || 'gemini-2.5-flash' }}
+          # The previous default was retired for new users; override with GEMINI_AGENT_MODEL if needed.
+          gemini_model: ${{ vars.GEMINI_AGENT_MODEL || 'gemini-3.8-flash' }}
           upload_artifacts: false
           settings: '{"tools":{"exclude":["run_shell_command","google_web_search","web_fetch"]}}'
           prompt: |
@@ -70,6 +70,10 @@ jobs:
         if: always() && steps.approval.outputs.approved == 'true' && steps.key.outputs.configured == 'true'
         run: |
           set -eu
+          # Gemini's action creates this untracked helper; exclude it from the review patch.
+          if [ -f .gemini/commands/gemini-invoke.toml ] && ! git ls-files --error-unmatch .gemini/commands/gemini-invoke.toml >/dev/null 2>&1; then
+            rm -f -- .gemini/commands/gemini-invoke.toml
+          fi
           {
             git diff --name-only
             git ls-files --others --exclude-standard
