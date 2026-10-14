@@ -13,7 +13,7 @@ Set these in the **development/Preview environment only** for the feature branch
 - `SAFE_AUTOMATON_AI_ENABLED=true`
 - `SAFE_AUTOMATON_FREE_POOL_ENABLED=true`
 - `SAFE_AUTOMATON_AI_TOKEN` as a secret of at least 32 characters; enter the same value in Execution Lab when running the agent.
-- `SAFE_AUTOMATON_AI_ORDER=cloudflare,groq,cerebras,openrouter,huggingface,deepseek,xai` (optional; this is the default order)
+- `SAFE_AUTOMATON_AI_ORDER=gemini_primary,gemini_secondary,gemini_tertiary,cloudflare,groq,cerebras,openrouter,huggingface,deepseek,xai` (optional; this is the default order)
 
 Every provider requires an explicit acknowledgement flag with the exact value `YES_FREE_ONLY`. This is a safety gate, not a technical guarantee of upstream billing.
 
@@ -29,7 +29,7 @@ Every provider requires an explicit acknowledgement flag with the exact value `Y
 | DeepSeek | `DEEPSEEK_API_KEY` | `SAFE_AUTOMATON_DEEPSEEK_MODEL` | `SAFE_AUTOMATON_DEEPSEEK_FREE_ONLY=YES_FREE_ONLY` |
 | xAI | `XAI_API_KEY` | `SAFE_AUTOMATON_XAI_MODEL` | `SAFE_AUTOMATON_XAI_FREE_ONLY=YES_FREE_ONLY` |
 
-Only providers with both a model and key (where applicable) and the exact acknowledgement are considered. For OpenRouter, the model ID must end in `:free`. Never paste keys into code, issues, prompts, or logs. Store keys only as Cloudflare encrypted secrets; store non-secret flags and model IDs as environment variables.
+The three Gemini slots use Google’s OpenAI-compatible API endpoint. Put only model IDs actually available to your API project into the primary/secondary/tertiary variables; do not assume an old model alias is independently available. The same Gemini API key is reused, so model slots do not create additional quota for the same project.\n\nOnly providers with both a model and key (where applicable) and the exact acknowledgement are considered. For OpenRouter, the model ID must end in `:free`. Never paste keys into code, issues, prompts, or logs. Store keys only as Cloudflare encrypted secrets; store non-secret flags and model IDs as environment variables.
 
 ## Fallback behavior
 
