@@ -139,3 +139,43 @@ test("Gemini model slots fall back in order before moving to another provider", 
     assert.doesNotMatch(JSON.stringify(data), /secret-gemini/);
   } finally { globalThis.fetch = originalFetch; }
 });
+
+
+test("method, malformed JSON, and oversized bodies are rejected before invoking any model", async () => {
+  let modelCalls = 0;
+  const env = baseEnv({ AI: { run: async () => { modelCalls++; return { response: "should not run" }; } } });
+
+  const getResponse = await onRequest({ request: request(body, { method: "GET" }), env });
+  assert.equal(getResponse.status, 405);
+  assert.equal(getResponse.headers.get("Allow"), "POST");
+
+  const malformed = new Request("https://safe-automaton.example/api/ai-pool", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Safe-Automaton-AI-Token": TOKEN },
+    body: "{not-json"
+  });
+  const malformedResult = await call(malformed, env);
+  assert.equal(malformedResult.response.status, 400);
+
+  const oversized = new Request("https://safe-automaton.example/api/ai-pool", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Safe-Automaton-AI-Token": TOKEN },
+    body: JSON.stringify({ ...body, brief: "x".repeat(13_000) })
+  });
+  const oversizedResult = await call(oversized, env);
+  assert.equal(oversizedResult.response.status, 413);
+  assert.equal(modelCalls, 0);
+});
+
+test("AI disabled fails closed without invoking the model", async () => {
+  let modelCalls = 0;
+  const env = baseEnv({
+    SAFE_AUTOMATON_AI_ENABLED: "false",
+    AI: { run: async () => { modelCalls++; return { response: "should not run" }; } }
+  });
+  const { response, data } = await call(request(), env);
+  assert.equal(response.status, 503);
+  assert.equal(data.diagnosticCode, "AI_ENABLE_FLAG_NOT_TRUE");
+  assert.equal(data.modelInvoked, false);
+  assert.equal(modelCalls, 0);
+});
