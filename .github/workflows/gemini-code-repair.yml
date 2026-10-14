@@ -47,6 +47,9 @@ jobs:
       - name: Run Gemini CLI on the AI-enable failure
         if: steps.approval.outputs.approved == 'true' && steps.key.outputs.configured == 'true'
         uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489
+        env:
+          # Required for non-interactive GitHub Actions runners; this trusts only the checked-out workspace.
+          GEMINI_CLI_TRUST_WORKSPACE: "true"
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           gemini_cli_version: latest
