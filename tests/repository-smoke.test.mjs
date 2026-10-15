@@ -423,3 +423,20 @@ test('Execution Lab selects a task-specific skill procedure and QA checklist wit
     assert.ok(elements.qaChecks.innerHTML.includes(context.procedures[key].checks[0][0]));
   }
 });
+
+
+test('Execution Lab AI draft request has a bounded wait and always restores the button', async () => {
+  const html = await source('execution-lab.html');
+  const start = html.indexOf("$('aiDraft').addEventListener('click'");
+  const end = html.indexOf("$('agentRun')", start);
+  assert.ok(start >= 0 && end > start, 'AI draft click handler should be present');
+  const handler = html.slice(start, end);
+  assert.match(handler, /new AbortController\(\)/);
+  assert.match(handler, /setTimeout\(\(\)=>controller\.abort\(\),45000\)/);
+  assert.match(handler, /signal:controller\.signal/);
+  assert.match(handler, /cache:'no-store'/);
+  assert.match(handler, /response\.json\(\)/);
+  assert.match(handler, /Server je vratio neispravan odgovor/);
+  assert.match(handler, /error\?\.name === 'AbortError'/);
+  assert.match(handler, /finally\{if\(timeoutId!==null\)clearTimeout\(timeoutId\);\$\('aiDraft'\)\.disabled=false;\}/);
+});
