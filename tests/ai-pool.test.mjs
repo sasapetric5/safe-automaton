@@ -60,7 +60,7 @@ test("AI Pool marks a reviewer report complete only when the explicit end marker
     calls++;
     return { response: calls === 3 ? "IZVEŠTAJ ZAVRŠEN" : "Kratak nacrt." };
   } } });
-  const { response, data } = await call(request({ ...body, sourceUrl: "https://savremenikoreni.com" }), env);
+  const { response, data } = await call(request({ ...body, sourceUrl: "https://savremenikoreni.com", evidence: "" }), env);
   assert.equal(response.status, 200);
   assert.equal(calls, 3);
   assert.equal(data.outputComplete, true);
