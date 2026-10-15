@@ -22,7 +22,7 @@ const AGENTS = [
 
 export async function onRequest(context) {
   try {
-    return await handleRequest(context);
+    return await handleRequest(context, Date.now() + 22_000);
   } catch (error) {
     // Keep unexpected runtime failures JSON-shaped; never expose secrets or raw provider errors.
     return json({
@@ -37,7 +37,7 @@ export async function onRequest(context) {
   }
 }
 
-async function handleRequest(context) {
+async function handleRequest(context, deadline) {
   const request = context.request;
   if (request.method !== "POST") return json({ error: "Koristi POST." }, 405, { Allow: "POST" });
   const origin = request.headers.get("Origin");
@@ -114,7 +114,7 @@ async function handleRequest(context) {
     const user = "NASLOV:\n" + title + "\n\nBRIEF:\n" + brief + "\n\nDOKAZI / OGRANIČENJA:\n" + (evidence || "Nisu dostavljeni.") + prior;
     const result = await inferWithFallback(available, context.env, [
       { role: "system", content: system }, { role: "user", content: user }
-    ]);
+    ], deadline);
     providerAttempts.push(...result.attempts);
     if (!result.output) {
       return json({
@@ -162,13 +162,22 @@ function parseOrder(value) {
   const requested = value.split(",").map(item => item.trim().toLowerCase()).filter(id => Object.hasOwn(PROVIDERS, id));
   return [...new Set(requested)];
 }
-async function inferWithFallback(available, env, messages) {
+async function inferWithFallback(available, env, messages, deadline) {
   const attempts = [];
   for (const { id, config } of available) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs < 1_500) {
+      attempts.push({ provider: id, model: safeModel(id, config, env), status: "overall_deadline_reached" });
+      break;
+    }
     try {
+      const timeoutMs = Math.max(1_000, Math.min(7_000, remainingMs - 500));
       const result = id === "cloudflare"
-        ? await callCloudflare(env.AI, config.model, messages)
-        : await callOpenAICompatible(id, config, env, messages);
+        ? await Promise.race([
+            callCloudflare(env.AI, config.model, messages),
+            new Promise((_, reject) => setTimeout(() => reject(Object.assign(new Error("provider_timeout"), { name: "TimeoutError" })), timeoutMs))
+          ])
+        : await callOpenAICompatible(id, config, env, messages, timeoutMs);
       if (result.output) return { ...result, provider: id, attempts: [...attempts, { provider: id, model: result.model, status: "success" }] };
       attempts.push({ provider: id, model: result.model, status: "empty_response" });
     } catch (error) {
@@ -181,13 +190,13 @@ async function callCloudflare(binding, model, messages) {
   const result = await binding.run(model, { messages, max_completion_tokens: 650, temperature: 0.2 });
   return { output: extractText(result), model };
 }
-async function callOpenAICompatible(id, config, env, messages) {
+async function callOpenAICompatible(id, config, env, messages, timeoutMs = 7_000) {
   const model = env[config.model].trim();
   const response = await fetch(config.baseUrl + "/chat/completions", {
     method: "POST",
     headers: { "Authorization": "Bearer " + env[config.key], "Content-Type": "application/json" },
     body: JSON.stringify({ model, messages, max_tokens: 650, temperature: 0.2 }),
-    signal: AbortSignal.timeout(25_000)
+    signal: AbortSignal.timeout(timeoutMs)
   });
   if (!response.ok) {
     const error = new Error("provider_http_" + response.status);
