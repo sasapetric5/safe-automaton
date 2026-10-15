@@ -468,7 +468,7 @@ test('Execution Lab collects real SEO audit evidence before either AI path and n
     $: id => fields[id]
   };
   vm.createContext(context);
-  vm.runInContext(html.slice(helperStart, helperEnd) + '\nglobalThis.evidenceForAi=evidenceForAi;globalThis.formatSeoEvidenceForAgents=formatSeoEvidenceForAgents;', context);
+  vm.runInContext("let seoAuditEvidence=null; let seoAuditSource='';\n" + html.slice(helperStart, helperEnd) + '\nglobalThis.evidenceForAi=evidenceForAi;globalThis.resetAuditEvidence=()=>{seoAuditEvidence=null;seoAuditSource=""};', context);
   const evidence = await context.evidenceForAi('seo', 'https://savremenikoreni.com/');
   assert.equal(calls, 1);
   assert.match(evidence, /SEO AUDIT DOKAZI/);
@@ -477,7 +477,6 @@ test('Execution Lab collects real SEO audit evidence before either AI path and n
   assert.doesNotMatch(evidence, /neka prethodna AI analiza/);
 
   context.fetch = async () => ({ ok: false, status: 502, json: async () => ({ ok: false, error: 'SEO audit nije dostupan' }) });
-  context.seoAuditEvidence = null;
-  context.seoAuditSource = '';
+  context.resetAuditEvidence();
   await assert.rejects(() => context.evidenceForAi('seo', 'https://savremenikoreni.com/'), /SEO audit nije dostupan/);
 });
