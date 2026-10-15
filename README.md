@@ -1,35 +1,67 @@
 # Safe Automaton — RankGeo.dev
 
-Bezbedan, statički prototip za planiranje poslovnih hipoteza, eksperimenata i budžeta.
+Razvojni prototip za istraživanje javnih poslovnih prilika, procenu izvodljivosti i pripremu isporuka uz obaveznu ljudsku kontrolu.
 
-## Trenutne funkcije
+## Stranice
 
-- Dashboard sa početnim budžetskim limitom od 100 EUR.
-- Ručna evidencija troškova.
-- Tri početne poslovne hipoteze za tržišnu validaciju.
-- Dodavanje, označavanje i brisanje eksperimentalnih zadataka.
-- Izvoz lokalnih podataka u JSON.
-- Čuvanje podataka u `localStorage` ovog pregledača.
+- `index.html` — kontrolna tabla, lokalna evidencija i budžetski limit.
+- `opportunities.html` — ručno pokretana pretraga javnih izvora poslova i poziva.
+- `workbench.html` — procena isplativosti, radni zadaci, nacrti ponuda, ručno odobravanje i praćenje isporuke/naplate.
+- `execution-lab.html` — lokalni šabloni, ručni QA i izvoz Markdown/JSON rezultata, uz opciono AI generisanje nacrta preko `/api/ai-task` i kontrolisani tok tri AI agenta preko `/api/ai-pool`. AI pozivi zahtevaju eksplicitnu konfiguraciju u Preview okruženju; ne izvršavaju proizvoljan kod niti spoljne radnje.
 
-## Bezbednosne granice
+## Obavezna pravila
 
-Ova verzija ne povezuje AI model i ne izvršava spoljašnje radnje. Nema novčanika, automatskih transakcija, shell izvršavanja, kloniranja, samostalne izmene koda ili automatskog objavljivanja. Ne unosite API ključeve ili druge tajne.
+- **Ovlašćena potrošnja: 0 EUR.** Nema plaćenih API-ja, pretplata ili automatskog trošenja novca.
+- **Svaka ponuda zahteva izričito korisničko odobrenje.** Aplikacija je ne šalje; odobrenje samo označava nacrt kao spreman za ručno slanje van aplikacije.
+- Nema automatskog prihvatanja ugovora, prijava, poruka, plaćanja ili upravljanja nalogom na platformi.
+- Ne zaobilaziti prijave, CAPTCHA, paywall, ograničenja učestalosti ili pravila izvora.
+- Pre slanja proveriti uslove platforme, podobnost iz Srbije, obim posla, rok, kriterijume prihvatanja, prava na rezultat i naplatu.
+- Ocena 1–100 je heuristička procena na osnovu unetih pretpostavki, a ne garancija da će posao biti dobijen, završen или наплаћен.
 
-Podaci se čuvaju lokalno u pregledaču; obrišite ih samo ako ste sigurni ili prethodno napravite izvoz. Budžetski limit je evidencija, ne bankarska kontrola niti stvarno ograničenje potrošnje.
+## Trenutne mogućnosti
 
-## Lokalno pokretanje
+- Prenosiva biblioteka skill-procedura: `skills/seo-audit/SKILL.md`, `skills/copywriting/SKILL.md` i `skills/customer-research/SKILL.md`. Ovo su instrukcije za budući runtime, nisu još povezane sa automatskim AI izvršavanjem; primenjuju pravila 0 EUR, proverljivih izvora i zabrane spoljnih radnji.
 
-Otvorite `index.html` u modernom pregledaču. Za Cloudflare Pages statički prototip može da se objavi direktno iz repozitorijuma, bez build komande, uz izlazni direktorijum koji sadrži `index.html`.
+- Opportunity Hunter: ručno preuzimanje sa trenutno povezanih javnih izvora; rezultati i istraživačke prilike čuvaju se u `localStorage`.
+- Task Workbench: procena neto zarade po satu, sposobnosti, roka, šanse za dobijanje posla i rizika.
+- Execution Lab: SEO evidence audit sa prioritetnim sledećim koracima, plus odvojene ručne QA kontrolne liste za SEO, istraživanje, tehnički QA i plan isporuke. Kontrolne liste ne znače da je zadatak autonomno izvršen.
+- Generisanje i čuvanje nacrta ponude; izričito odobrenje za ručno slanje; izvoz teksta.
+- Praćenje faza zadatka: procena, prihvatanje ponude, izrada, provera kvaliteta, isporuka, potvrda rezultata i ručno evidentiranje naplate.
+- JSON izvoz za rezervnu kopiju.
 
-## Plan narednih faza
+## Trenutna ograničenja — važno
 
-1. Proveriti funkcije u pregledaču i ispraviti eventualne probleme.
-2. Validirati poslovne hipoteze razgovorima sa stvarnim korisnicima.
-3. Izabrati jednu usku uslugu tek kada postoje dokazi potražnje.
-4. Povezati AI preko serverske komponente uz zaštitu ključeva, ograničenja troškova i ljudsko odobravanje rizičnih radnji.
+- Ovo još nije autonomni AI izvršilac: postoje samo opciono AI generisanje nacrta i ograničeni tok tri agenta, koji zahtevaju ručno omogućavanje i ljudsku proveru. Nema sandbox-a za izradu i testiranje koda klijentskog posla, integracije sa platnim servisima niti automatske isporuke.
+- Позадинска претрага 24/7/365 није имплементирана. Opportunity Hunter се тренутно покреће ручно; стални распоред мора бити засебно пројектован и проверен у оквиру бесплатних квота.
+- Подаци у `localStorage` доступни су само истом прегледачу/домену и нису синхронизовани између уређаја. Извези JSON као резервну копију.
+- Одобрење понуде у Workbench-у не шаље ништа. Статус „Плаћено” је само ручна евиденција и није банковна потврда.
+- Нема гаранције прихода; огласи, услови, рокови и изводљивост морају се проверити на извору.
 
-Nema garancije prihoda. Početne hipoteze i njihove oznake su okvirne, nisu dokaz tržišne potražnje.
+## Развојни приоритети
 
-## Licenca
+1. Тестирати Opportunity Hunter у прегледачу и поправити евентуалне грешке.
+2. Проверити Task Workbench у прегледачу, укључујући одобрење понуде, JSON/TXT извоз и опоравак од неважећих података.
+3. Додати трајно чување података на серверу само ако је могуће у оквиру одобреног буџета и са одговарајућом аутентификацијом.
+4. Изабрати један мали тип задатка и изградити ограничен, проверљив execution sandbox без приступа тајнама или неконтролисаног извршавања.
+5. Дизајнирати периодичну претрагу и праћење рокова у оквиру стварних квота бесплатног hosting-а; не обећавати непрекидност док није тестирана.
+6. Свака интеграција са платформом или платним сервисом захтева засебну проверу правила и експлицитно одобрење корисника.
 
-Nije definisana u ovoj početnoj verziji.
+
+## Опциони Workers AI нацрти (подразумевано искључени)
+
+- Endpoint: `POST /api/ai-task`; подржани типови су `seo`, `research`, `qa` и `scope`.
+- Модел: `@cf/zai-org/glm-4.7-flash`, преко Cloudflare Pages Functions binding-а `AI`.
+- Нема спољног API кључа, али inference користи Cloudflare Workers AI квоту. Бесплатна квота и доступност модела могу да се промене.
+- Endpoint одбија позиве док `SAFE_AUTOMATON_AI_ENABLED` није експлицитно постављен на `true`, binding `AI` није додат и Cloudflare secret `SAFE_AUTOMATON_AI_TOKEN` (најмање 32 знака) није подешен. Сваки захтев мора послати тај токен у заглављу `X-Safe-Automaton-AI-Token`; UI га не чува. Нема аутоматског fallback-а на плаћени API.
+- **За строги буџет 0 EUR:** не укључивати док Cloudflare налог није потврђен на Workers Free плану и док није проверено да је модел доступан у бесплатном режиму. На Workers Paid плану употреба преко дневне бесплатне квоте може бити наплаћена. Апликација сама не може да гарантује да налог неће наплатити прекорачење.
+- Постављање `SAFE_AUTOMATON_AI_ENABLED=true`, додавање binding-а `AI` и тајне `SAFE_AUTOMATON_AI_TOKEN` су ручни кораци у Cloudflare подешавањима; овај commit не мења налог, binding, продукцију нити покреће inference.
+- Захтев је ограничен на 12 KB; тип задатка је allowlist; endpoint нема веб-претраживање нити алате; сваки одговор је означен као непроверен нацрт за људски преглед.
+- Тестови користе mock AI binding и не троше Workers AI квоту.
+
+## Локално покретање
+
+Отвори `index.html` у модерном прегледачу или постави статичке датотеке на развојни Cloudflare Pages preview. Ова промена је намењена искључиво развојној грани `phase-0-1-safe-research-foundation`; не мења продукцију сама по себи.
+
+## Лиценца
+
+Није дефинисана у овој почетној верзији.
