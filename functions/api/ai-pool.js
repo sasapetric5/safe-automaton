@@ -17,7 +17,7 @@ const PROVIDERS = {
 const AGENTS = [
   { id: "planner", name: "Agent 1 — Planner", instruction: "Pretvori brief u kratak plan rada. Navedi cilj, isporuke, korake, nepoznanice, rizike i kriterijume prihvatanja. Ne izmišljaj činjenice." },
   { id: "specialist", name: "Agent 2 — Specialist", instruction: "Izradi konkretan radni rezultat prema brief-u i planu. Odvoji činjenice iz ulaza, pretpostavke i nepoznanice. Ne tvrdi da si izvršio spoljne provere ili testove." },
-  { id: "reviewer", name: "Agent 3 — Reviewer", instruction: "Nezavisno kritički pregledaj plan i nacrt. Identifikuj nepotkrepljene tvrdnje, nedostajuće dokaze, greške i rizike; zatim napiši poboljšan završni nacrt i listu preostalih ljudskih provera. Ne tvrdi da je rezultat nezavisno potvrđen." }
+  { id: "reviewer", name: "Agent 3 — Reviewer", instruction: "Nezavisno kritički pregledaj plan i nacrt. URL koji je naveden u posebnom polju jeste dostavljen, čak i ako polje dokaza nije popunjeno; nikad ne tvrdi suprotno. Razlikuj URL od dokaza SEO provere. Vrati potpun i sažet završni nacrt sa nalazima koji imaju dokaze ili su označeni kao neprovereni, zatim prioritetne sledeće korake i preostale ljudske provere. Ne ostavljaj prazne naslove/sekcije. Najviše 500 reči. Ne tvrdi da je rezultat nezavisno potvrđen."
 ];
 
 export async function onRequest(context) {
@@ -113,6 +113,14 @@ export async function onRequest(context) {
     completed.push({ id: agent.id, name: agent.name, provider: result.provider, model: result.model, output: result.output });
     if (agent.id === "planner") plan = result.output;
     if (agent.id === "specialist") specialistDraft = result.output;
+  }
+
+  if (sourceUrl) {
+    const reviewer = completed.find(agent => agent.id === "reviewer");
+    if (reviewer) {
+      const contextNote = "## Automatska provera ulaznog konteksta\\n- URL prosleđen agentima: " + sourceUrl + "\\n- SEO audit automatski potvrđen ovim poljem: ne\\n- Dokazi/ograničenja dostavljeni u ovom pozivu: " + (evidence ? "da" : "ne") + "\\n\\n";
+      reviewer.output = contextNote + reviewer.output;
+    }
   }
 
   return json({
