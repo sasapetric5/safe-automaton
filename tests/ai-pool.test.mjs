@@ -49,6 +49,24 @@ test("Reviewer prompt requires a bounded complete report and prevents unsupporte
   assert.match(reviewerSystem, /IZVEŠTAJ ZAVRŠEN/);
   assert.match(data.finalDraft, /URL prosleđen agentima/);
   assert.equal(data.verified, false);
+  assert.equal(data.outputComplete, false);
+  assert.match(data.completionWarning, /može biti nepotpun/i);
+  assert.match(data.finalDraft, /UPOZORENJE/);
+});
+
+test("AI Pool marks a reviewer report complete only when the explicit end marker is present", async () => {
+  let calls = 0;
+  const env = baseEnv({ AI: { run: async () => {
+    calls++;
+    return { response: calls === 3 ? "1) Opseg i izvor podataka\\n2) Nalazi: nema potvrđenih nalaza.\\n3) Sledeći koraci: proveriti renderovani DOM.\\n4) Čovek treba da potvrdi nalaze.\\nIZVEŠTAJ ZAVRŠEN" : "Kratak nacrt." };
+  } } });
+  const { response, data } = await call(request({ ...body, sourceUrl: "https://savremenikoreni.com" }), env);
+  assert.equal(response.status, 200);
+  assert.equal(calls, 3);
+  assert.equal(data.outputComplete, true);
+  assert.equal(data.completionWarning, null);
+  assert.match(data.finalDraft, /IZVEŠTAJ ZAVRŠEN$/);
+  assert.equal(data.verified, false);
 });
 
 test("Free AI Pool uses the approved Cloudflare provider for all three sequential agents", async () => {
