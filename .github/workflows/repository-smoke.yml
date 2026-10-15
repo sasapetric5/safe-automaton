@@ -6,6 +6,7 @@ on:
       - phase-0-1-safe-research-foundation
       - feature/free-ai-pool-router
       - main
+      - integration/main-consolidation
   pull_request:
     branches:
       - main
