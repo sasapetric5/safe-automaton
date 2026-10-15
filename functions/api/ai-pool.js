@@ -124,7 +124,7 @@ export async function onRequest(context) {
   }
 
   const reviewerOutput = completed[2].output.trim();
-  const outputComplete = /(?:^|\\n)IZVEŠTAJ ZAVRŠEN\\.?\\s*$/i.test(reviewerOutput);
+  const outputComplete = /(?:^|\n)IZVEŠTAJ ZAVRŠEN\.?\s*$/i.test(reviewerOutput);
   const completionWarning = outputComplete ? null : "UPOZORENJE: Reviewer nije emitovao obaveznu završnu oznaku. Izveštaj može biti nepotpun; ne izvoziti kao spreman za klijenta. Ponovite generisanje ili skratite ulaz.";
   const finalDraft = outputComplete ? reviewerOutput : reviewerOutput + "\\n\\n---\\n" + completionWarning;
 
