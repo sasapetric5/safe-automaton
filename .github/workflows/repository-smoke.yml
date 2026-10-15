@@ -26,4 +26,4 @@ jobs:
         with:
           node-version: 22
       - name: Run repository smoke tests
-        run: node --test tests/repository-smoke.test.mjs tests/ai-task.test.mjs tests/ai-task-endpoint.test.mjs tests/agent-run.test.mjs tests/ai-pool.test.mjs
+        run: node --experimental-default-type=module --test tests/repository-smoke.test.mjs tests/ai-task.test.mjs tests/ai-task-endpoint.test.mjs tests/agent-run.test.mjs tests/ai-pool.test.mjs
