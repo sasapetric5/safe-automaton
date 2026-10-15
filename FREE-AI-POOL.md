@@ -2,47 +2,52 @@
 
 This is an opt-in fallback router for the Execution Lab's three-agent draft flow. It does not publish, commit, message clients, execute arbitrary code, or make purchases.
 
-## Important billing limitation
+## Billing safety
 
-The application can require explicit opt-in and restrict OpenRouter to model IDs ending in `:free`, but it cannot independently verify an upstream provider's account billing state. A provider API key can be billable even if the model itself is open-weight. Before enabling any external provider, verify in that provider's account that use will stop at the free limit and cannot charge a payment method. Do not enable a provider if that cannot be guaranteed. The safest default is to leave all external providers disabled. Cloudflare Workers AI is included only after explicit opt-in too; its free allocation is 10,000 Neurons/day, and usage above that can be billable on a paid Workers plan.
+The router cannot independently verify a provider's billing settings. A model being open-weight or a key being valid does not prove that API calls are free. Before enabling a provider, verify that its account has a free allowance and cannot charge a payment method. If that cannot be guaranteed, do not enable it. The safest default is to leave all provider flags unset.
 
-## Required common settings
+Cloudflare Workers AI uses the existing `AI` binding. Its free allocation and any account billing settings must be checked in Cloudflare before enabling it. The provider acknowledgement below is a safety gate, not a technical guarantee against charges.
 
-Set these in the **development/Preview environment only** for the feature branch:
+## Common settings (Preview first)
+
+Set these only in the intended Preview environment while testing:
 
 - `SAFE_AUTOMATON_AI_ENABLED=true`
 - `SAFE_AUTOMATON_FREE_POOL_ENABLED=true`
-- `SAFE_AUTOMATON_AI_TOKEN` as a secret of at least 32 characters; enter the same value in Execution Lab when running the agent.
-- `SAFE_AUTOMATON_AI_ORDER=gemini_primary,gemini_secondary,gemini_tertiary,cloudflare,groq,cerebras,openrouter,huggingface,deepseek,xai` (optional; this is the default order)
+- `SAFE_AUTOMATON_AI_TOKEN`: encrypted secret of at least 32 characters; enter the same value in the Execution Lab request.
+- `SAFE_AUTOMATON_AI_ORDER` is optional. Default order: `gemini_primary,gemini_secondary,gemini_tertiary,cloudflare,xai,openrouter,mistral,huggingface,deepseek`.
 
-Every provider requires an explicit acknowledgement flag with the exact value `YES_FREE_ONLY`. This is a safety gate, not a technical guarantee of upstream billing.
+Each provider requires the exact acknowledgement value `YES_FREE_ONLY`. This does not verify the provider's billing state. Never enable an API provider until its free-only use has been checked.
 
 ## Provider configuration
 
-| Provider | Secret | Model variable | Required acknowledgement |
+| Provider | Secret / binding | Model variable | Required acknowledgement |
 |---|---|---|---|
+| Gemini API (three fallback model slots; one shared key/quota) | `GEMINI_API_KEY` | `SAFE_AUTOMATON_GEMINI_MODEL_PRIMARY`, `SAFE_AUTOMATON_GEMINI_MODEL_SECONDARY`, `SAFE_AUTOMATON_GEMINI_MODEL_TERTIARY` | `SAFE_AUTOMATON_GEMINI_FREE_ONLY=YES_FREE_ONLY` |
 | Cloudflare Workers AI | existing `AI` binding | built-in `@cf/zai-org/glm-4.7-flash` | `SAFE_AUTOMATON_CLOUDFLARE_FREE_ONLY=YES_FREE_ONLY` |
-| Groq | `GROQ_API_KEY` | `SAFE_AUTOMATON_GROQ_MODEL` | `SAFE_AUTOMATON_GROQ_FREE_ONLY=YES_FREE_ONLY` |
-| Cerebras | `CEREBRAS_API_KEY` | `SAFE_AUTOMATON_CEREBRAS_MODEL` | `SAFE_AUTOMATON_CEREBRAS_FREE_ONLY=YES_FREE_ONLY` |
+| xAI / Grok | `XAI_API_KEY` | `SAFE_AUTOMATON_XAI_MODEL` | `SAFE_AUTOMATON_XAI_FREE_ONLY=YES_FREE_ONLY` |
 | OpenRouter | `OPENROUTER_API_KEY` | `SAFE_AUTOMATON_OPENROUTER_MODEL` (must end in `:free`) | `SAFE_AUTOMATON_OPENROUTER_FREE_ONLY=YES_FREE_ONLY` |
+| Mistral | `MISTRAL_API_KEY` | `SAFE_AUTOMATON_MISTRAL_MODEL` | `SAFE_AUTOMATON_MISTRAL_FREE_ONLY=YES_FREE_ONLY` |
 | Hugging Face | `HF_TOKEN` | `SAFE_AUTOMATON_HUGGINGFACE_MODEL` | `SAFE_AUTOMATON_HUGGINGFACE_FREE_ONLY=YES_FREE_ONLY` |
 | DeepSeek | `DEEPSEEK_API_KEY` | `SAFE_AUTOMATON_DEEPSEEK_MODEL` | `SAFE_AUTOMATON_DEEPSEEK_FREE_ONLY=YES_FREE_ONLY` |
-| xAI | `XAI_API_KEY` | `SAFE_AUTOMATON_XAI_MODEL` | `SAFE_AUTOMATON_XAI_FREE_ONLY=YES_FREE_ONLY` |
 
-The three Gemini slots use Google’s OpenAI-compatible API endpoint. Put only model IDs actually available to your API project into the primary/secondary/tertiary variables; do not assume an old model alias is independently available. The same Gemini API key is reused, so model slots do not create additional quota for the same project.\n\nOnly providers with both a model and key (where applicable) and the exact acknowledgement are considered. For OpenRouter, the model ID must end in `:free`. Never paste keys into code, issues, prompts, or logs. Store keys only as Cloudflare encrypted secrets; store non-secret flags and model IDs as environment variables.
+Groq remains implemented as an optional provider for explicitly configured testing, but is not in the default order. It is not part of the intended seven-provider pool.
+
+Use only model IDs confirmed available to your API account. Gemini's three slots reuse one API key and do not create extra quota. Store keys only as encrypted secrets; never place them in source code, commits, prompts, issues, or logs.
 
 ## Fallback behavior
 
-- The router uses the configured order and tries the next approved provider after a quota/rate-limit response, timeout, provider outage, or empty response.
-- It also moves to the next provider after authentication/permission errors, but returns a safe category only; fix the configuration before relying on that provider.
-- If all approved providers fail, it returns `ALL_FREE_PROVIDERS_FAILED`; no paid model is tried.
-- Each of the three agent steps can use a different provider. Response metadata shows provider/model IDs and safe failure categories, never API keys or raw upstream error bodies.
-- OpenRouter is accepted only with a `:free` model ID. The router cannot prove the actual account has no paid billing path.
-- Provider calls send the task text to the selected external provider. Enable only providers whose data handling is acceptable for the information supplied. Do not send passwords, private keys, or sensitive client data.
+- The router tries the next approved provider after quota/rate-limit errors, timeouts, outages, or empty responses.
+- Only explicitly approved providers with required keys/models are considered.
+- OpenRouter is accepted only when the model ID ends in `:free`.
+- If all approved providers fail, the endpoint returns `ALL_FREE_PROVIDERS_FAILED`; it must not try a paid model.
+- Each of the three agent steps may use a different provider. Response metadata may show provider/model IDs and safe failure categories, never API keys or raw upstream error bodies.
+- Provider calls send task text to the selected provider. Do not send passwords, private keys, or sensitive client data.
 
-## Current limitations
+## Limitations and required checks
 
-- This is a first implementation of provider fallback, not a guaranteed daily-quota dashboard. It does not predict or reserve provider quotas before each call.
-- There is no automatic paid fallback, no automatic publish/deploy, and no external client action.
-- The current Cloudflare endpoint still requires the owner token header and explicit enable flags.
-- Run the focused tests and inspect the resulting branch diff before enabling it in any shared or production environment.
+- The router does not predict or reserve daily quotas and is not a quota dashboard.
+- Free-tier approval flags do not independently enforce provider-side billing limits.
+- There is no automatic paid fallback, publish/deploy, offer sending, or external client action.
+- The owner token and explicit enable flags remain required.
+- Run the focused tests and inspect the PR diff before merging or enabling providers.
