@@ -118,7 +118,7 @@ export async function onRequest(context) {
   if (sourceUrl) {
     const reviewer = completed.find(agent => agent.id === "reviewer");
     if (reviewer) {
-      const contextNote = "## Automatska provera ulaznog konteksta\n- URL prosleđen agentima: " + sourceUrl + "\n- SEO audit automatski potvrđen ovim poljem: ne\n- Dokazi/ograničenja dostavljeni u ovom pozivu: " + (evidence ? "da" : "ne") + "\n\n";
+      const contextNote = "## Automatska provera ulaznog konteksta\n- URL prosleđen agentima: " + sourceUrl + "\n- SEO audit automatski potvrđen ovim poljem: ne\n- Dokazi/ograničenja dostavljeni u ovom pozivu: " + (evidence ? "da" : "ne") + "\n" + (evidence ? "" : "\n**UPOZORENJE O DOKAZIMA:** Polje dokaza bilo je prazno. Ovaj poziv nije dostavio HTML snimak niti rezultate SEO audita. Tvrdnje u AI tekstu da je pregledan HTML ili da su konkretni nalazi potvrđeni nisu potkrepljene dokazima iz ovog poziva. Proveriti nezavisno pre upotrebe.\n") + "\n";
       reviewer.output = contextNote + reviewer.output;
     }
   }
