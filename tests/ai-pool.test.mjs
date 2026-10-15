@@ -83,7 +83,9 @@ test("Free AI Pool uses the approved Cloudflare provider for all three sequentia
   assert.equal(data.verified, false);
   assert.equal(data.sent, false);
   assert.equal(data.externalActionsTaken, false);
-  assert.equal(data.finalDraft, "Rezultat 3");
+  assert.match(data.finalDraft, /Rezultat 3/);
+  assert.equal(data.outputComplete, false);
+  assert.match(data.finalDraft, /UPOZORENJE/);
 });
 
 test("fallback moves to an explicitly approved provider after Cloudflare quota failure without logging secrets", async () => {
