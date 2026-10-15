@@ -187,9 +187,11 @@ $('agentRun').addEventListener('click',async()=>{
   if(aiToken.length<32){$('auditStatus').textContent='Unesi AI pristupni token (najmanje 32 znaka); token nije sačuvan.';return;}
   $('agentRun').disabled=true;
   $('auditStatus').textContent='Agent 1/3 · Planner priprema plan…';
+  const controller=new AbortController();
+  const requestTimeout=setTimeout(()=>controller.abort(),90000);
   let responseData=null;
   try{
-    const response=await fetch('/api/ai-pool',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
+    const response=await fetch('/api/ai-pool',{method:'POST',cache:'no-store',signal:controller.signal,headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
     responseData=await response.json();
     const data=responseData;
     if(!response.ok||!data.ok){
@@ -209,7 +211,7 @@ $('agentRun').addEventListener('click',async()=>{
     $('saved').textContent='Tri AI koraka su završena. Rezultat nije nezavisno proveren niti poslat.';
     $('auditStatus').textContent='Završeno: Planner → Specialist → Reviewer. Pročitaj izlaze sva tri agenta i završni rezultat.';
   }catch(error){
-    const message=error instanceof Error?error.message:'nepoznata greška';
+    const message=error?.name==='AbortError'?'Zahtev je prekinut posle 90 sekundi. Server nije potvrdio završetak; proveri konfiguraciju/kvotu pre ponovnog pokušaja.':error instanceof Error?error.message:'nepoznata greška';
     let diagnostic='';
     if(responseData?.diagnosticCode){
       const d=responseData, b=d.runtimeBindings;
@@ -223,7 +225,7 @@ $('agentRun').addEventListener('click',async()=>{
         '; model pozvan: '+(d.modelInvoked?'da':'ne')+']';
     }
     $('auditStatus').textContent='Tok 3 AI agenta nije završen: '+message+diagnostic+'. Nema spoljne radnje.';
-  }finally{$('agentRun').disabled=false;}
+  }finally{clearTimeout(requestTimeout);$('agentRun').disabled=false;}
 });
 $('reset').addEventListener('click',()=>{['title','brief','source','deadline','facts','aiToken'].forEach(id=>$(id).value='');artifact='';activeRecordId=null;$('output').textContent='Forma je očišćena.';$('copy').disabled=$('download').disabled=$('save').disabled=true;getChecks().forEach(x=>x.checked=false);qa()});
 getChecks().forEach(x=>x.addEventListener('change',qa));
