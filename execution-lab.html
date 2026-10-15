@@ -7,7 +7,7 @@
 <title>Execution Lab · Safe Automaton</title>
 <style>
 :root{color-scheme:dark;--bg:#0b0e14;--panel:#141a24;--line:#293244;--text:#edf2fa;--muted:#a2aec2;--accent:#9ae6b4;--warn:#f6d58a;--bad:#ffaaa8}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 15% 0%,#182638 0,transparent 42%),var(--bg);color:var(--text);font:16px/1.5 system-ui,sans-serif}main{max-width:1100px;margin:auto;padding:24px 16px 60px}header,.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}header{justify-content:space-between;margin-bottom:18px}.brand{font-weight:800}.brand span,a{color:var(--accent)}a{overflow-wrap:anywhere}.tag{font-size:.78rem;border:1px solid #3a614a;color:var(--accent);border-radius:999px;padding:4px 9px}.hero,.card{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:18px;margin-bottom:14px}.hero{background:linear-gradient(130deg,#192433,#111722)}h1{font-size:clamp(1.8rem,4vw,3rem);line-height:1.1;margin:8px 0}h2{font-size:1.12rem;margin:0 0 12px}p,.muted{color:var(--muted)}.small{font-size:.84rem;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}.span6{grid-column:span 6}.span12{grid-column:span 12}button,.button{font:inherit;cursor:pointer;border:1px solid #41506a;border-radius:9px;padding:9px 12px;background:#202b3b;color:var(--text);text-decoration:none;display:inline-block}button.primary{background:var(--accent);color:#0b1710;border-color:var(--accent);font-weight:750}button:disabled{opacity:.5;cursor:not-allowed}input,select,textarea{font:inherit;color:var(--text);background:#0e131c;border:1px solid #364257;border-radius:9px;padding:10px;width:100%}label{display:block;color:var(--muted);font-size:.86rem;margin:9px 0 5px}textarea{min-height:100px}.formrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}.notice{border-left:3px solid var(--warn);padding:9px 12px;background:#28251d;border-radius:0 8px 8px 0;color:#f3e4bc;font-size:.9rem}.check{display:flex;gap:8px;align-items:flex-start;margin:8px 0}.check input{width:auto;margin-top:5px}.output{min-height:260px;white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.6 ui-monospace,monospace}.status{padding:9px 0;border-bottom:1px solid var(--line)}.good{color:var(--accent)}.bad{color:var(--bad)}footer{font-size:.82rem;color:var(--muted);margin-top:20px}@media(max-width:760px){.span6{grid-column:span 12}.formrow{grid-template-columns:1fr}.hero{padding:18px}}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 15% 0%,#182638 0,transparent 42%),var(--bg);color:var(--text);font:16px/1.5 system-ui,sans-serif}main{max-width:1100px;margin:auto;padding:24px 16px 60px}header,.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}header{justify-content:space-between;margin-bottom:18px}.brand{font-weight:800}.brand span,a{color:var(--accent)}a{overflow-wrap:anywhere}.tag{font-size:.78rem;border:1px solid #3a614a;color:var(--accent);border-radius:999px;padding:4px 9px}.hero,.card{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:18px;margin-bottom:14px}.hero{background:linear-gradient(130deg,#192433,#111722)}h1{font-size:clamp(1.8rem,4vw,3rem);line-height:1.1;margin:8px 0}h2{font-size:1.12rem;margin:0 0 12px}p,.muted{color:var(--muted)}.small{font-size:.84rem;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}.span6{grid-column:span 6}.span12{grid-column:span 12}button,.button{font:inherit;cursor:pointer;border:1px solid #41506a;border-radius:9px;padding:9px 12px;background:#202b3b;color:var(--text);text-decoration:none;display:inline-block}button.primary{background:var(--accent);color:#0b1710;border-color:var(--accent);font-weight:750}button:disabled{opacity:.5;cursor:not-allowed}button.agent-running:disabled{opacity:.42!important;background:#4b5563!important;color:#fff!important;border-color:#778196!important;filter:grayscale(1);cursor:wait;box-shadow:0 0 0 2px #77819633}input,select,textarea{font:inherit;color:var(--text);background:#0e131c;border:1px solid #364257;border-radius:9px;padding:10px;width:100%}label{display:block;color:var(--muted);font-size:.86rem;margin:9px 0 5px}textarea{min-height:100px}.formrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}.notice{border-left:3px solid var(--warn);padding:9px 12px;background:#28251d;border-radius:0 8px 8px 0;color:#f3e4bc;font-size:.9rem}.check{display:flex;gap:8px;align-items:flex-start;margin:8px 0}.check input{width:auto;margin-top:5px}.output{min-height:260px;white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.6 ui-monospace,monospace}.status{padding:9px 0;border-bottom:1px solid var(--line)}.good{color:var(--accent)}.bad{color:var(--bad)}footer{font-size:.82rem;color:var(--muted);margin-top:20px}@media(max-width:760px){.span6{grid-column:span 12}.formrow{grid-template-columns:1fr}.hero{padding:18px}}
 </style></head>
 <body><main>
 <header><div class="brand">SAFE <span>AUTOMATON</span> / EXECUTION LAB</div><div class="row"><span class="tag">0 € · NEMA SPOLJNIH RADNJI</span><a href="./">Kontrolna tabla</a><a href="./workbench.html">Task Workbench</a></div></header>
@@ -228,7 +228,12 @@ $('agentRun').addEventListener('click',async()=>{
   let evidence='';
   const aiToken=$('aiToken').value.trim();
   if(aiToken.length<32){$('auditStatus').textContent='Unesi AI pristupni token (najmanje 32 znaka); token nije sačuvan.';return;}
-  $('agentRun').disabled=true;
+  const agentRunButton=$('agentRun');
+  const agentRunOriginalText=agentRunButton.textContent;
+  agentRunButton.disabled=true;
+  agentRunButton.classList.add('agent-running');
+  agentRunButton.setAttribute('aria-busy','true');
+  agentRunButton.textContent='Pokretanje 3 agenta…';
   $('auditStatus').textContent='Agent 1/3 · Planner priprema plan…';
   const controller=new AbortController();
   const requestTimeout=setTimeout(()=>controller.abort(),90000);
@@ -270,7 +275,13 @@ $('agentRun').addEventListener('click',async()=>{
         '; model pozvan: '+(d.modelInvoked?'da':'ne')+']';
     }
     $('auditStatus').textContent='Tok 3 AI agenta nije završen: '+message+diagnostic+'. Nema spoljne radnje.';
-  }finally{clearTimeout(requestTimeout);$('agentRun').disabled=false;}
+  }finally{
+    clearTimeout(requestTimeout);
+    agentRunButton.disabled=false;
+    agentRunButton.classList.remove('agent-running');
+    agentRunButton.setAttribute('aria-busy','false');
+    agentRunButton.textContent=agentRunOriginalText;
+  }
 });
 $('reset').addEventListener('click',()=>{['title','brief','source','deadline','facts','aiToken'].forEach(id=>$(id).value='');artifact='';activeRecordId=null;seoAuditEvidence=null;seoAuditSource='';$('output').textContent='Forma je očišćena.';$('copy').disabled=$('download').disabled=$('save').disabled=true;getChecks().forEach(x=>x.checked=false);qa()});
 getChecks().forEach(x=>x.addEventListener('change',qa));
