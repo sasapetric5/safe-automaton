@@ -21,6 +21,23 @@ const AGENTS = [
 ];
 
 export async function onRequest(context) {
+  try {
+    return await handleRequest(context);
+  } catch (error) {
+    // Keep unexpected runtime failures JSON-shaped; never expose secrets or raw provider errors.
+    return json({
+      error: "AI tok nije završen zbog neočekivane greške servera.",
+      diagnosticCode: "AI_POOL_UNHANDLED_EXCEPTION",
+      errorType: error instanceof Error ? error.name : "unknown",
+      modelInvoked: "unknown",
+      verified: false,
+      sent: false,
+      externalActionsTaken: false
+    }, 500);
+  }
+}
+
+async function handleRequest(context) {
   const request = context.request;
   if (request.method !== "POST") return json({ error: "Koristi POST." }, 405, { Allow: "POST" });
   const origin = request.headers.get("Origin");
