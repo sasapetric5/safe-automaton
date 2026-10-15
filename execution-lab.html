@@ -221,7 +221,14 @@ $('agentRun').addEventListener('click',async()=>{
     const evidence=await evidenceForAi(taskType,sourceUrl);
     $('auditStatus').textContent=taskType==='seo'&&sourceUrl?'SEO dokazi prikupljeni. Agent 1/3 · Planner priprema plan…':'Agent 1/3 · Planner priprema plan…';
     const response=await fetch('/api/ai-pool',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence,sourceUrl})});
-    responseData=await response.json();
+    const responseText=await response.text();
+    try {
+      responseData=JSON.parse(responseText);
+    } catch {
+      const contentType=response.headers.get('content-type')||'nepoznat';
+      const requestId=response.headers.get('cf-ray')||response.headers.get('x-request-id')||'nije dostupan';
+      throw new Error('Server je vratio ne-JSON odgovor (HTTP '+response.status+', Content-Type: '+contentType+', zahtev: '+requestId+'). Proveriti Cloudflare Function logs za /api/ai-pool.');
+    }
     const data=responseData;
     if(!response.ok||!data.ok){
       const completed=Array.isArray(data.completedAgents)?data.completedAgents:[];
