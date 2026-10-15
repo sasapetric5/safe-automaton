@@ -399,7 +399,7 @@ test('Execution Lab passes live SEO audit evidence and source URL to both AI end
   assert.match(html, /await evidenceForAi\(taskType,sourceUrl\)/);
   assert.match(html, /JSON\.stringify\(\{taskType,title,brief,evidence,sourceUrl\}\)/);
   const helperStart = html.indexOf('function formatSeoEvidenceForAgents(');
-  const helperEnd = html.indexOf("\n$('aiDraft').addEventListener", helperStart);
+  const helperEnd = html.indexOf("$('aiDraft').addEventListener", helperStart);
   assert.ok(helperStart >= 0 && helperEnd > helperStart);
   const fields = { facts: { value: 'Vlasnikove proverene napomene' } };
   let requestedUrl = '';
@@ -419,7 +419,7 @@ test('Execution Lab passes live SEO audit evidence and source URL to both AI end
     }
   };
   vm.createContext(context);
-  vm.runInContext(html.slice(helperStart, helperEnd) + '\nglobalThis.evidenceForAi=evidenceForAi;', context);
+  vm.runInContext(html.slice(helperStart, helperEnd) + ';globalThis.evidenceForAi=evidenceForAi;', context);
   const evidence = await context.evidenceForAi('seo', 'https://savremenikoreni.com/');
   assert.equal(requestedUrl, 'https://savremenikoreni.com/');
   assert.match(evidence, /SEO AUDIT DOKAZI/);
