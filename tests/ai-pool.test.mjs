@@ -36,19 +36,61 @@ test("Free AI Pool is opt-in, requires a valid owner token, and rejects invalid 
   assert.equal((await call(request({ ...body, taskType: "shell" }), baseEnv())).response.status, 400);
 });
 
+test("Reviewer prompt requires a bounded complete report and prevents unsupported SEO conclusions", async () => {
+  const calls = [];
+  const env = baseEnv({ AI: { run: async (model, input) => { calls.push(input); return { response: "Nacrt za ljudski pregled." }; } } });
+  const { response, data } = await call(request({ ...body, taskType: "seo", sourceUrl: "https://savremenikoreni.com", evidence: "Početni HTML: 174278 bajtova; H1 nije pronađen; JavaScript nije izvršen; robots meta index, follow." }), env);
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 3);
+  const reviewerSystem = calls[2].messages[0].content;
+  assert.match(reviewerSystem, /najviše 250 reči/i);
+  assert.match(reviewerSystem, /renderovani DOM/i);
+  assert.match(reviewerSystem, /robots=index,follow nije problem samo po sebi/i);
+  assert.match(reviewerSystem, /IZVEŠTAJ ZAVRŠEN/);
+  assert.match(data.finalDraft, /URL prosleđen agentima/);
+  assert.equal(data.verified, false);
+  assert.equal(data.outputComplete, false);
+  assert.match(data.completionWarning, /može biti nepotpun/i);
+  assert.match(data.finalDraft, /UPOZORENJE/);
+});
+
+test("AI Pool marks a reviewer report complete only when the explicit end marker is present", async () => {
+  let calls = 0;
+  const env = baseEnv({ AI: { run: async () => {
+    calls++;
+    return { response: calls === 3 ? "**Izvor:** Dostavljeni HTML snimak (JavaScript neizvršen)\n\nNa osnovu dostavljenog HTML snimka, H1 nedostaje.\nIZVEŠTAJ ZAVRŠEN" : "Kratak nacrt." };
+  } } });
+  const { response, data } = await call(request({ ...body, sourceUrl: "https://savremenikoreni.com", evidence: "" }), env);
+  assert.equal(response.status, 200);
+  assert.equal(calls, 3);
+  assert.equal(data.outputComplete, true);
+  assert.equal(data.completionWarning, null);
+  assert.match(data.finalDraft, /UPOZORENJE O DOKAZIMA/);
+  assert.match(data.finalDraft, /Polje dokaza bilo je prazno/);
+  assert.match(data.finalDraft, /AI tvrdnja o izvoru — HTML snimak nije dostavljen/);
+  assert.match(data.finalDraft, /Bez dostavljenog HTML snimka, ovaj zaključak nije potkrepljen dokazima/);
+  assert.doesNotMatch(data.finalDraft, /\\*\\*Izvor:\\*\\* Dostavljeni HTML snimak \\(JavaScript neizvršen\\)/);
+  assert.match(data.finalDraft, /IZVEŠTAJ ZAVRŠEN$/);
+  assert.equal(data.verified, false);
+});
+
 test("Free AI Pool uses the approved Cloudflare provider for all three sequential agents", async () => {
   const calls = [];
   const env = baseEnv({ AI: { run: async (model, input) => { calls.push({ model, input }); return { response: "Rezultat " + calls.length }; } } });
-  const { response, data } = await call(request(), env);
+  const { response, data } = await call(request({ ...body, sourceUrl: "https://savremenikoreni.com" }), env);
   assert.equal(response.status, 200);
   assert.equal(calls.length, 3);
+  assert.ok(calls.every(call => call.input.messages[1].content.includes("https://savremenikoreni.com")));
+  assert.ok(calls.every(call => call.input.messages[1].content.includes("URL nije isto što i dokaz da je SEO audit izvršen")));
   assert.ok(calls.every(c => c.model === "@cf/zai-org/glm-4.7-flash"));
   assert.equal(data.engine, "free-ai-pool");
   assert.equal(data.agents.length, 3);
   assert.equal(data.verified, false);
   assert.equal(data.sent, false);
   assert.equal(data.externalActionsTaken, false);
-  assert.equal(data.finalDraft, "Rezultat 3");
+  assert.match(data.finalDraft, /Rezultat 3/);
+  assert.equal(data.outputComplete, false);
+  assert.match(data.finalDraft, /UPOZORENJE/);
 });
 
 test("fallback moves to an explicitly approved provider after Cloudflare quota failure without logging secrets", async () => {
