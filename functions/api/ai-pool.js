@@ -161,7 +161,7 @@ async function inferWithFallback(available, env, messages) {
   return { output: "", provider: null, model: null, attempts };
 }
 async function callCloudflare(binding, model, messages) {
-  const result = await binding.run(model, { messages, max_completion_tokens: 650, temperature: 0.2 });
+  const result = await binding.run(model, { messages, max_completion_tokens: 1400, temperature: 0.2 });
   return { output: extractText(result), model };
 }
 async function callOpenAICompatible(id, config, env, messages) {
@@ -169,7 +169,7 @@ async function callOpenAICompatible(id, config, env, messages) {
   const response = await fetch(config.baseUrl + "/chat/completions", {
     method: "POST",
     headers: { "Authorization": "Bearer " + env[config.key], "Content-Type": "application/json" },
-    body: JSON.stringify({ model, messages, max_tokens: 650, temperature: 0.2 }),
+    body: JSON.stringify({ model, messages, max_tokens: 1400, temperature: 0.2 }),
     signal: AbortSignal.timeout(25_000)
   });
   if (!response.ok) {
