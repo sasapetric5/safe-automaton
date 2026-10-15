@@ -36,6 +36,21 @@ test("Free AI Pool is opt-in, requires a valid owner token, and rejects invalid 
   assert.equal((await call(request({ ...body, taskType: "shell" }), baseEnv())).response.status, 400);
 });
 
+test("Reviewer prompt requires a bounded complete report and prevents unsupported SEO conclusions", async () => {
+  const calls = [];
+  const env = baseEnv({ AI: { run: async (model, input) => { calls.push(input); return { response: "Nacrt za ljudski pregled." }; } } });
+  const { response, data } = await call(request({ ...body, taskType: "seo", sourceUrl: "https://savremenikoreni.com", evidence: "Početni HTML: 174278 bajtova; H1 nije pronađen; JavaScript nije izvršen; robots meta index, follow." }), env);
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 3);
+  const reviewerSystem = calls[2].messages[0].content;
+  assert.match(reviewerSystem, /najviše 250 reči/i);
+  assert.match(reviewerSystem, /renderovani DOM/i);
+  assert.match(reviewerSystem, /robots=index,follow nije problem samo po sebi/i);
+  assert.match(reviewerSystem, /IZVEŠTAJ ZAVRŠEN/);
+  assert.match(data.finalDraft, /URL prosleđen agentima/);
+  assert.equal(data.verified, false);
+});
+
 test("Free AI Pool uses the approved Cloudflare provider for all three sequential agents", async () => {
   const calls = [];
   const env = baseEnv({ AI: { run: async (model, input) => { calls.push({ model, input }); return { response: "Rezultat " + calls.length }; } } });
