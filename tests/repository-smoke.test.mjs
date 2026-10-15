@@ -434,6 +434,12 @@ test('Execution Lab collects real SEO audit evidence before either AI path and n
   const draftStart = html.indexOf("$('aiDraft').addEventListener");
   const auditStart = html.indexOf("$('audit').addEventListener");
   assert.ok(agentStart >= 0 && draftStart >= 0 && auditStart >= 0);
+  assert.match(html, /button\.agent-running:disabled\{opacity:\.42!important/);
+  assert.match(html, /agentRunButton\.classList\.add\('agent-running'\)/);
+  assert.match(html, /agentRunButton\.textContent='Pokretanje 3 agenta…'/);
+  assert.match(html, /agentRunButton\.setAttribute\('aria-busy','true'\)/);
+  assert.match(html, /agentRunButton\.classList\.remove\('agent-running'\)/);
+  assert.match(html, /agentRunButton\.textContent=agentRunOriginalText/);
   assert.ok(html.indexOf('evidence=await evidenceForAi(taskType,sourceUrl)', draftStart) < html.indexOf("fetch('/api/ai-task'", draftStart));
   assert.ok(html.indexOf('evidence=await evidenceForAi(taskType,sourceUrl)', agentStart) < html.indexOf("fetch('/api/ai-pool'", agentStart));
   assert.match(html, /seoAuditEvidence=null;seoAuditSource='';\$\('audit'\)\.hidden/);
