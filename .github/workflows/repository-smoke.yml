@@ -1,4 +1,4 @@
-name: Repository smoke checks (AI pool regression v7)
+name: Repository smoke checks (AI pool regression v8)
 
 on:
   push:
