@@ -5,6 +5,7 @@ on:
     branches:
       - phase-0-1-safe-research-foundation
       - feature/free-ai-pool-router
+      - main
   pull_request:
     branches:
       - main
