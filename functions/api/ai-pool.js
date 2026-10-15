@@ -132,12 +132,12 @@ export async function onRequest(context) {
   let safeReviewerOutput = reviewerOutput;
   if (evidenceWarning) {
     safeReviewerOutput = safeReviewerOutput
-      .replace(/\*\*?Izvor:\*\*?\s*Dostavljeni HTML snimak[^\\n]*/gi, "**Izvor:** AI tvrdnja o izvoru — HTML snimak nije dostavljen u ovom zahtevu.")
+      .replace(/\*\*?Izvor:\*\*?\s*Dostavljeni HTML snimak[^\n]*/gi, "**Izvor:** AI tvrdnja o izvoru — HTML snimak nije dostavljen u ovom zahtevu.")
       .replace(/Na osnovu dostavljenog HTML snimka/gi, "Bez dostavljenog HTML snimka, ovaj zaključak nije potkrepljen dokazima");
   }
   const finalDraft = [safeReviewerOutput, completionWarning, evidenceWarning]
     .filter(Boolean)
-    .join("\\n\\n---\\n\\n");
+    .join("\n\n---\n\n");
 
   return json({
     ok: true,
