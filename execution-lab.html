@@ -151,7 +151,7 @@ $('aiDraft').addEventListener('click',async()=>{
     const response=await fetch('/api/ai-task',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
     data=await response.json();
     if(!response.ok||!data.ok)throw new Error(data.detail||data.error||'AI nacrt nije uspeo.');
-    artifact='# AI RADNI NACRT — '+title+'\n\n'+data.draft+'\n\n---\nStatus: '+data.status+'\nModel: '+data.model+'\nVreme: '+data.generatedAt+'\nProvera: '+data.disclaimer+'\nPoslato klijentu: ne. Spoljne radnje: nijedna.';
+    artifact='# AI RADNI NACRT — '+title+'\n\n'+data.draft+'\n\n---\nStatus: '+data.status+'\nProvajderi: '+(data.providerOrder||[]).join(' → ')+'\nVreme: '+data.generatedAt+'\nProvera: '+data.disclaimer+'\nPoslato klijentu: ne. Spoljne radnje: nijedna.';
     activeRecordId=null;$('output').textContent=artifact;
     $('copy').disabled=$('download').disabled=$('save').disabled=false;
     getChecks().forEach(x=>x.checked=false);qa();
@@ -189,7 +189,7 @@ $('agentRun').addEventListener('click',async()=>{
   $('auditStatus').textContent='Agent 1/3 · Planner priprema plan…';
   let responseData=null;
   try{
-    const response=await fetch('/api/agent-run',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
+    const response=await fetch('/api/ai-pool',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
     responseData=await response.json();
     const data=responseData;
     if(!response.ok||!data.ok){
@@ -202,7 +202,7 @@ $('agentRun').addEventListener('click',async()=>{
       }
       throw new Error((data.error||'Tok agenata nije uspeo')+(data.failedAgent?' (zaustavljeno kod: '+data.failedAgent+')':''));
     }
-    artifact='# REZULTAT TOKA 3 AI AGENTA — '+title+'\n\n'+data.agents.map(a=>'## '+a.name+'\n\n'+a.output).join('\n\n---\n\n')+'\n\n---\n\n## Završni rezultat za ljudski pregled\n\n'+data.finalDraft+'\n\n## Status\n'+data.status+'\nModel: '+data.model+'\nVreme: '+data.generatedAt+'\nNezavisno provereno: ne. Poslato klijentu: ne. Spoljne radnje: nijedna.';
+    artifact='# REZULTAT TOKA 3 AI AGENTA — '+title+'\n\n'+data.agents.map(a=>'## '+a.name+'\n\n'+a.output).join('\n\n---\n\n')+'\n\n---\n\n## Završni rezultat za ljudski pregled\n\n'+data.finalDraft+'\n\n## Status\n'+data.status+'\nProvajderi/modeli: '+data.agents.map(a=>a.provider+' / '+a.model).join(', ')+'\nVreme: '+data.generatedAt+'\nNezavisno provereno: ne. Poslato klijentu: ne. Spoljne radnje: nijedna.';
     activeRecordId=null;$('output').textContent=artifact;
     $('copy').disabled=$('download').disabled=$('save').disabled=false;
     getChecks().forEach(x=>x.checked=false);qa();
