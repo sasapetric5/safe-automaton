@@ -65,6 +65,7 @@ export async function onRequest(context) {
   const title = bounded(input?.title, 180);
   const brief = bounded(input?.brief, MAX_TEXT);
   const evidence = bounded(input?.evidence, MAX_TEXT);
+  const sourceUrl = bounded(input?.sourceUrl, 500);
   if (!TASKS.has(taskType)) return json({ error: "Nepoznat tip zadatka." }, 400);
   if (!title || !brief) return json({ error: "Naslov i brief su obavezni." }, 400);
 
@@ -94,7 +95,7 @@ export async function onRequest(context) {
       "Tip zadatka: " + taskType,
       "Uloga: " + agent.name + ". " + agent.instruction
     ].join("\n");
-    const user = "NASLOV:\n" + title + "\n\nBRIEF:\n" + brief + "\n\nDOKAZI / OGRANIČENJA:\n" + (evidence || "Nisu dostavljeni.") + prior;
+    const user = "NASLOV:\n" + title + "\n\nBRIEF:\n" + brief + "\n\nURL CILJNE STRANICE (naveden od korisnika; nije sam po sebi dokaz SEO provere):\n" + (sourceUrl || "Nije naveden.") + "\n\nDOKAZI / OGRANIČENJA:\n" + (evidence || "Nisu dostavljeni.") + "\n\nVažno: ne tvrdi da URL nije dostavljen ako je naveden iznad. URL nije isto što i dokaz da je SEO audit izvršen. Ako audit nalaz nije u dokazima, jasno reci da agent nije dobio rezultate audita u ovom pozivu." + prior;
     const result = await inferWithFallback(available, context.env, [
       { role: "system", content: system }, { role: "user", content: user }
     ]);
