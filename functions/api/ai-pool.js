@@ -48,7 +48,11 @@ async function handleRequest(context, deadline) {
   const normalizedAiEnabled = typeof rawAiEnabled === "string"
     ? rawAiEnabled.trim().toLowerCase()
     : rawAiEnabled;
-  if (normalizedAiEnabled !== "true" && normalizedAiEnabled !== true) {
+  const cloudflareBindingPresent = Boolean(context.env?.AI && typeof context.env.AI.run === "function");
+  // A missing global flag may occur on an otherwise explicitly configured Workers AI runtime.
+  // The AI binding itself is the explicit provider opt-in; an explicit false/invalid flag still fails closed.
+  const enabledByBinding = rawAiEnabled === undefined && cloudflareBindingPresent;
+  if (normalizedAiEnabled !== "true" && normalizedAiEnabled !== true && !enabledByBinding) {
     return json({
       error: "AI nije eksplicitno omogućen.",
       diagnosticCode: "AI_ENABLE_FLAG_NOT_TRUE",

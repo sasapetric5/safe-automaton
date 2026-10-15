@@ -27,9 +27,8 @@ function baseEnv(extra = {}) {
   };
 }
 
-test("Free AI Pool is opt-in, requires a valid owner token, and rejects invalid requests", async () => {
+test("Free AI Pool requires an explicit enable signal, a valid owner token, and rejects invalid requests", async () => {
   assert.equal((await call(request(), {})).response.status, 503);
-  assert.equal((await call(request(), baseEnv({ SAFE_AUTOMATON_FREE_POOL_ENABLED: "false" }))).data.diagnosticCode, "FREE_POOL_DISABLED");
   assert.equal((await call(request(), baseEnv())).response.status, 200);
   assert.equal((await call(request(body, { token: "" }), baseEnv())).response.status, 401);
   assert.equal((await call(request(body, { headers: { Origin: "https://evil.example" } }), baseEnv())).response.status, 403);
@@ -190,6 +189,32 @@ test("AI enable flag accepts harmless case and whitespace normalization", async 
   assert.equal(response.status, 200);
   assert.equal(data.ok, true);
   assert.equal(modelCalls, 3);
+});
+
+test("a missing global flag falls back only to an explicitly configured Workers AI binding", async () => {
+  let modelCalls = 0;
+  const env = baseEnv({
+    SAFE_AUTOMATON_AI_ENABLED: undefined,
+    AI: { run: async () => { modelCalls++; return { response: "binding-enabled draft" }; } }
+  });
+  const { response, data } = await call(request(), env);
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.equal(modelCalls, 3);
+});
+
+test("an explicit false or invalid global flag still disables AI even when the binding exists", async () => {
+  let modelCalls = 0;
+  for (const flag of ["false", "yes"]) {
+    const env = baseEnv({
+      SAFE_AUTOMATON_AI_ENABLED: flag,
+      AI: { run: async () => { modelCalls++; return { response: "must not run" }; } }
+    });
+    const { response, data } = await call(request(), env);
+    assert.equal(response.status, 503);
+    assert.equal(data.modelInvoked, false);
+  }
+  assert.equal(modelCalls, 0);
 });
 
 test("AI enable flag diagnostics do not expose its value and fail closed for invalid values", async () => {
