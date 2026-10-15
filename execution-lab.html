@@ -152,7 +152,7 @@ function formatSeoEvidenceForAgents(data){
     'Ograničenja:',
     ...(Array.isArray(data.limitations)&&data.limitations.length?data.limitations:['Ograničenja nisu navedena u odgovoru.']),
     'Ovaj skup dokaza opisuje samo ono što endpoint stvarno proverava. Ne zaključuj o renderovanom DOM-u, rangiranju, saobraćaju ili drugim stranicama.'
-  ].join('\\n').slice(0,3500);
+  ].join('\n').slice(0,3500);
 }
 async function evidenceForAi(taskType,sourceUrl){
   const facts=$('facts').value.trim();
@@ -162,7 +162,7 @@ async function evidenceForAi(taskType,sourceUrl){
   try{data=await response.json();}catch{throw new Error('SEO audit nije vratio čitljiv odgovor; AI generisanje je zaustavljeno da ne bi nastao izveštaj bez dokaza.');}
   if(!response.ok||!data.ok)throw new Error((data.error||'SEO audit nije uspeo')+' AI generisanje je zaustavljeno da se ne napravi izveštaj bez dokaza.');
   const auditEvidence=formatSeoEvidenceForAgents(data);
-  return [facts?'ČINJENICE I OGRANIČENJA KOJE JE UNEO KORISNIK:\\n'+facts:'',auditEvidence].filter(Boolean).join('\\n\\n').slice(0,4000);
+  return [facts?'ČINJENICE I OGRANIČENJA KOJE JE UNEO KORISNIK:\\n'+facts:'',auditEvidence].filter(Boolean).join('\n\n').slice(0,4000);
 }
 $('aiDraft').addEventListener('click',async()=>{
   const taskType=$('taskType').value;
