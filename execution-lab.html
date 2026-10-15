@@ -220,7 +220,7 @@ $('agentRun').addEventListener('click',async()=>{
   try{
     const evidence=await evidenceForAi(taskType,sourceUrl);
     $('auditStatus').textContent=taskType==='seo'&&sourceUrl?'SEO dokazi prikupljeni. Agent 1/3 · Planner priprema plan…':'Agent 1/3 · Planner priprema plan…';
-    const response=await fetch('/api/agent-run',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
+    const response=await fetch('/api/ai-pool',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence,sourceUrl})});
     const responseText=await response.text();
     try {
       responseData=JSON.parse(responseText);
