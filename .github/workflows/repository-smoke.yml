@@ -7,6 +7,7 @@ on:
       - feature/free-ai-pool-router
       - main
       - integration/main-consolidation
+      - fix/ai-pool-output-completeness
   pull_request:
     branches:
       - main
