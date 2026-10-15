@@ -72,7 +72,7 @@ test("AI Pool marks a reviewer report complete only when the explicit end marker
 test("Free AI Pool uses the approved Cloudflare provider for all three sequential agents", async () => {
   const calls = [];
   const env = baseEnv({ AI: { run: async (model, input) => { calls.push({ model, input }); return { response: "Rezultat " + calls.length }; } } });
-  const { response, data } = await call(request({ sourceUrl: "https://savremenikoreni.com" }), env);
+  const { response, data } = await call(request({ ...body, sourceUrl: "https://savremenikoreni.com" }), env);
   assert.equal(response.status, 200);
   assert.equal(calls.length, 3);
   assert.ok(calls.every(call => call.input.messages[1].content.includes("https://savremenikoreni.com")));
