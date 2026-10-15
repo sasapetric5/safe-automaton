@@ -137,18 +137,47 @@ $('audit').addEventListener('click',async()=>{
     $('auditStatus').textContent='Provera nije završena: '+(error instanceof Error?error.message:'nepoznata greška')+'. Nije napravljen lažno uspešan izveštaj.';
   }finally{$('audit').disabled=false;}
 });
+function formatSeoEvidenceForAgents(data){
+  const findings=Array.isArray(data.findings)?data.findings:[];
+  const summary=data.summary||{};
+  return [
+    'SEO AUDIT DOKAZI — automatski preuzet početni HTML; nije browser-rendered audit',
+    'Zatraženi URL: '+(data.requestedUrl||'nije naveden'),
+    'Konačni URL: '+(data.finalUrl||'nije naveden'),
+    'HTTP status: '+(data.httpStatus??'nije naveden'),
+    'Content-Type: '+(data.contentType||'nije naveden'),
+    'Sažetak: PASS '+(summary.pass??0)+', WARN '+(summary.warn??0)+', FAIL '+(summary.fail??0)+', NIJE PROVERENO '+(summary.notChecked??0),
+    'Nalazi:',
+    ...(findings.length?findings.map(f=>'['+(f.status||'NEPROVERENO')+'] '+(f.label||'Nalaz')+': '+(f.evidence||'Nema eksplicitnog dokaza')+'. Sledeći korak: '+(f.recommendation||'Potrebna ljudska provera')+'. Izvor: '+(f.evidenceSource||'initial_html')):['Audit nije vratio pojedinačne nalaze.']),
+    'Ograničenja:',
+    ...(Array.isArray(data.limitations)&&data.limitations.length?data.limitations:['Ograničenja nisu navedena u odgovoru.']),
+    'Ovaj skup dokaza opisuje samo ono što endpoint stvarno proverava. Ne zaključuj o renderovanom DOM-u, rangiranju, saobraćaju ili drugim stranicama.'
+  ].join('\\n').slice(0,3500);
+}
+async function evidenceForAi(taskType,sourceUrl){
+  const facts=$('facts').value.trim();
+  if(taskType!=='seo'||!sourceUrl)return facts.slice(0,4000);
+  const response=await fetch('/api/seo-audit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:sourceUrl})});
+  let data;
+  try{data=await response.json();}catch{throw new Error('SEO audit nije vratio čitljiv odgovor; AI generisanje je zaustavljeno da ne bi nastao izveštaj bez dokaza.');}
+  if(!response.ok||!data.ok)throw new Error((data.error||'SEO audit nije uspeo')+' AI generisanje je zaustavljeno da se ne napravi izveštaj bez dokaza.');
+  const auditEvidence=formatSeoEvidenceForAgents(data);
+  return [facts?'ČINJENICE I OGRANIČENJA KOJE JE UNEO KORISNIK:\\n'+facts:'',auditEvidence].filter(Boolean).join('\\n\\n').slice(0,4000);
+}
 $('aiDraft').addEventListener('click',async()=>{
   const taskType=$('taskType').value;
   const title=$('title').value.trim();
   const brief=$('brief').value.trim();
   if(!title||!brief){$('auditStatus').textContent='Unesi naslov i brief pre izrade AI nacrta.';return;}
-  const evidence=($('facts').value.trim()||artifact).slice(0,4000);
+  const sourceUrl=$('source').value.trim();
   const aiToken=$('aiToken').value.trim();
   if(aiToken.length<32){$('auditStatus').textContent='Unesi AI pristupni token (najmanje 32 znaka); token nije sačuvan.';return;}
   $('aiDraft').disabled=true;$('auditStatus').textContent='Proveravam da li je AI eksplicitno omogućen…';
   let data = null;
   try{
-    const response=await fetch('/api/ai-task',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
+    const evidence=await evidenceForAi(taskType,sourceUrl);
+    $('auditStatus').textContent=taskType==='seo'&&sourceUrl?'SEO dokazi prikupljeni. AI izrađuje nacrt…':'AI izrađuje nacrt…';
+    const response=await fetch('/api/ai-task',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence,sourceUrl})});
     data=await response.json();
     if(!response.ok||!data.ok)throw new Error(data.detail||data.error||'AI nacrt nije uspeo.');
     artifact='# AI RADNI NACRT — '+title+'\n\n'+data.draft+'\n\n---\nStatus: '+data.status+'\nProvajderi: '+(data.providerOrder||[]).join(' → ')+'\nVreme: '+data.generatedAt+'\nProvera: '+data.disclaimer+'\nPoslato klijentu: ne. Spoljne radnje: nijedna.';
@@ -189,7 +218,9 @@ $('agentRun').addEventListener('click',async()=>{
   $('auditStatus').textContent='Agent 1/3 · Planner priprema plan…';
   let responseData=null;
   try{
-    const response=await fetch('/api/ai-pool',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
+    const evidence=await evidenceForAi(taskType,sourceUrl);
+    $('auditStatus').textContent=taskType==='seo'&&sourceUrl?'SEO dokazi prikupljeni. Agent 1/3 · Planner priprema plan…':'Agent 1/3 · Planner priprema plan…';
+    const response=await fetch('/api/ai-pool',{method:'POST',headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence,sourceUrl})});
     responseData=await response.json();
     const data=responseData;
     if(!response.ok||!data.ok){
