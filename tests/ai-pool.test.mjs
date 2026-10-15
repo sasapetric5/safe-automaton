@@ -39,9 +39,11 @@ test("Free AI Pool is opt-in, requires a valid owner token, and rejects invalid 
 test("Free AI Pool uses the approved Cloudflare provider for all three sequential agents", async () => {
   const calls = [];
   const env = baseEnv({ AI: { run: async (model, input) => { calls.push({ model, input }); return { response: "Rezultat " + calls.length }; } } });
-  const { response, data } = await call(request(), env);
+  const { response, data } = await call(request({ sourceUrl: "https://savremenikoreni.com" }), env);
   assert.equal(response.status, 200);
   assert.equal(calls.length, 3);
+  assert.ok(calls.every(call => call.input.messages[1].content.includes("https://savremenikoreni.com")));
+  assert.ok(calls.every(call => call.input.messages[1].content.includes("URL nije isto što i dokaz SEO provere")));
   assert.ok(calls.every(c => c.model === "@cf/zai-org/glm-4.7-flash"));
   assert.equal(data.engine, "free-ai-pool");
   assert.equal(data.agents.length, 3);
