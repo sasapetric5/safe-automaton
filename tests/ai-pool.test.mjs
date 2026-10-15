@@ -58,7 +58,7 @@ test("AI Pool marks a reviewer report complete only when the explicit end marker
   let calls = 0;
   const env = baseEnv({ AI: { run: async () => {
     calls++;
-    return { response: calls === 3 ? "IZVEŠTAJ ZAVRŠEN" : "Kratak nacrt." };
+    return { response: calls === 3 ? "**Izvor:** Dostavljeni HTML snimak (JavaScript neizvršen)\\n\\nNa osnovu dostavljenog HTML snimka, H1 nedostaje.\\nIZVEŠTAJ ZAVRŠEN" : "Kratak nacrt." };
   } } });
   const { response, data } = await call(request({ ...body, sourceUrl: "https://savremenikoreni.com", evidence: "" }), env);
   assert.equal(response.status, 200);
@@ -67,6 +67,9 @@ test("AI Pool marks a reviewer report complete only when the explicit end marker
   assert.equal(data.completionWarning, null);
   assert.match(data.finalDraft, /UPOZORENJE O DOKAZIMA/);
   assert.match(data.finalDraft, /Polje dokaza bilo je prazno/);
+  assert.match(data.finalDraft, /AI tvrdnja o izvoru — HTML snimak nije dostavljen/);
+  assert.match(data.finalDraft, /Bez dostavljenog HTML snimka, ovaj zaključak nije potkrepljen dokazima/);
+  assert.doesNotMatch(data.finalDraft, /\\*\\*Izvor:\\*\\* Dostavljeni HTML snimak \\(JavaScript neizvršen\\)/);
   assert.match(data.finalDraft, /IZVEŠTAJ ZAVRŠEN$/);
   assert.equal(data.verified, false);
 });
