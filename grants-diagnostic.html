@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grants.gov POST dijagnostika</title>
+<style>
+body{font:16px/1.5 system-ui,sans-serif;max-width:760px;margin:32px auto;padding:0 16px;color:#17202a}
+button{padding:12px 16px;font:inherit;cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f4f6;padding:14px;border-radius:8px}
+#status{font-weight:700;margin-top:16px}
+</style>
+</head>
+<body>
+<h1>Grants.gov POST dijagnostika</h1>
+<p>Ova stranica šalje jedan test POST zahtev kroz Cloudflare Pages funkciju. Ne dodaje niti čuva nijedan zapis.</p>
+<button id="run">Pokreni test POST zahteva</button>
+<p id="status" role="status">Spremno za test.</p>
+<pre id="output">Ovde će se prikazati HTTP status i ceo odgovor funkcije.</pre>
+<script>
+const button = document.getElementById('run');
+const statusEl = document.getElementById('status');
+const output = document.getElementById('output');
+button.addEventListener('click', async () => {
+  button.disabled = true;
+  statusEl.textContent = 'Šaljem POST zahtev…';
+  output.textContent = '';
+  try {
+    const response = await fetch('/api/grants', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: JSON.stringify({rows: 5, startRecordNum: 0, keyword: 'technology', oppStatuses: 'posted|forecasted'})
+    });
+    const body = await response.text();
+    statusEl.textContent = 'HTTP ' + response.status + ' ' + response.statusText;
+    output.textContent = body || '(prazno telo odgovora)';
+  } catch (error) {
+    statusEl.textContent = 'Greška pre dobijanja HTTP odgovora';
+    output.textContent = String(error && error.message ? error.message : error);
+  } finally {
+    button.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
