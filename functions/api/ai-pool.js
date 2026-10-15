@@ -135,7 +135,7 @@ export async function onRequest(context) {
       .replace(/\*\*?Izvor:\*\*?\s*Dostavljeni HTML snimak[^\n]*/gi, "**Izvor:** AI tvrdnja o izvoru — HTML snimak nije dostavljen u ovom zahtevu.")
       .replace(/Na osnovu dostavljenog HTML snimka/gi, "Bez dostavljenog HTML snimka, ovaj zaključak nije potkrepljen dokazima");
   }
-  const finalDraft = [safeReviewerOutput, completionWarning, evidenceWarning]
+  const finalDraft = [evidenceWarning, safeReviewerOutput, completionWarning]
     .filter(Boolean)
     .join("\n\n---\n\n");
 
