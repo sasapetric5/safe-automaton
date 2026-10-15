@@ -76,7 +76,7 @@ test("Free AI Pool uses the approved Cloudflare provider for all three sequentia
   assert.equal(response.status, 200);
   assert.equal(calls.length, 3);
   assert.ok(calls.every(call => call.input.messages[1].content.includes("https://savremenikoreni.com")));
-  assert.ok(calls.every(call => call.input.messages[1].content.includes("URL nije isto što i dokaz SEO provere")));
+  assert.ok(calls.every(call => call.input.messages[1].content.includes("URL nije isto što i dokaz da je SEO audit izvršen")));
   assert.ok(calls.every(c => c.model === "@cf/zai-org/glm-4.7-flash"));
   assert.equal(data.engine, "free-ai-pool");
   assert.equal(data.agents.length, 3);
