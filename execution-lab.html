@@ -192,7 +192,7 @@ $('agentRun').addEventListener('click',async()=>{
   const requestTimeout=setTimeout(()=>controller.abort(),90000);
   let responseData=null;
   try{
-    const response=await fetch('/api/ai-pool',{method:'POST',cache:'no-store',signal:controller.signal,headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence})});
+    const response=await fetch('/api/ai-pool',{method:'POST',cache:'no-store',signal:controller.signal,headers:{'Content-Type':'application/json','X-Safe-Automaton-AI-Token':aiToken},body:JSON.stringify({taskType,title,brief,evidence,sourceUrl:$('source').value.trim()})});
     responseData=await response.json();
     const data=responseData;
     if(!response.ok||!data.ok){
