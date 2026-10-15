@@ -7,7 +7,7 @@ Razvojni prototip za istraživanje javnih poslovnih prilika, procenu izvodljivos
 - `index.html` — kontrolna tabla, lokalna evidencija i budžetski limit.
 - `opportunities.html` — ručno pokretana pretraga javnih izvora poslova i poziva.
 - `workbench.html` — procena isplativosti, radni zadaci, nacrti ponuda, ručno odobravanje i praćenje isporuke/naplate.
-- `execution-lab.html` — kontrolisani lokalni šabloni za izradu radnih artefakata, ručni QA, čuvanje i izvoz Markdown/JSON rezultata; nije povezan sa AI modelom i ne izvršava proizvoljan kod.
+- `execution-lab.html` — lokalni šabloni, ručni QA i izvoz Markdown/JSON rezultata, uz opciono AI generisanje nacrta preko `/api/ai-task` i kontrolisani tok tri AI agenta preko `/api/ai-pool`. AI pozivi zahtevaju eksplicitnu konfiguraciju u Preview okruženju; ne izvršavaju proizvoljan kod niti spoljne radnje.
 
 ## Obavezna pravila
 
@@ -31,7 +31,7 @@ Razvojni prototip za istraživanje javnih poslovnih prilika, procenu izvodljivos
 
 ## Trenutna ograničenja — važno
 
-- Ovo još nije autonomni AI izvršilac: nema povezivanja AI modela, израде резултата клијентског посла у sandbox-у, тестирања кода у изолованом окружењу, интеграције са платним сервисима или аутоматске испоруке.
+- Ovo još nije autonomni AI izvršilac: postoje samo opciono AI generisanje nacrta i ograničeni tok tri agenta, koji zahtevaju ručno omogućavanje i ljudsku proveru. Nema sandbox-a za izradu i testiranje koda klijentskog posla, integracije sa platnim servisima niti automatske isporuke.
 - Позадинска претрага 24/7/365 није имплементирана. Opportunity Hunter се тренутно покреће ручно; стални распоред мора бити засебно пројектован и проверен у оквиру бесплатних квота.
 - Подаци у `localStorage` доступни су само истом прегледачу/домену и нису синхронизовани између уређаја. Извези JSON као резервну копију.
 - Одобрење понуде у Workbench-у не шаље ништа. Статус „Плаћено” је само ручна евиденција и није банковна потврда.
