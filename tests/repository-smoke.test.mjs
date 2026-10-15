@@ -468,7 +468,7 @@ test('Execution Lab collects real SEO audit evidence before either AI path and n
     $: id => fields[id]
   };
   vm.createContext(context);
-  vm.runInContext("let seoAuditEvidence=null; let seoAuditSource='';\n" + html.slice(helperStart, helperEnd) + '\nglobalThis.evidenceForAi=evidenceForAi;globalThis.resetAuditEvidence=()=>{seoAuditEvidence=null;seoAuditSource=""};', context);
+  vm.runInContext("var seoAuditEvidence=null; var seoAuditSource='';\n" + html.slice(helperStart, helperEnd) + '\nglobalThis.evidenceForAi=evidenceForAi;globalThis.resetAuditEvidence=()=>{seoAuditEvidence=null;seoAuditSource=""};', context);
   const evidence = await context.evidenceForAi('seo', 'https://savremenikoreni.com/');
   assert.equal(calls, 1);
   assert.match(evidence, /SEO AUDIT DOKAZI/);
