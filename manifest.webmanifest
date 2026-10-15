@@ -1,0 +1,11 @@
+{
+  "name": "Safe Automaton",
+  "short_name": "Safe Auto",
+  "description": "Bezbedan radni prostor za Safe Automaton.",
+  "lang": "sr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0e14",
+  "theme_color": "#10131b"
+}
