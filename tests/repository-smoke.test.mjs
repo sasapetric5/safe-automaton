@@ -393,6 +393,46 @@ test('SEO audit endpoint returns evidence scope and findings for allowed HTML wi
   assert.ok(data.limitations.some(s=>s.includes('JavaScript-renderovani sadržaj')));
 });
 
+test('Execution Lab passes live SEO audit evidence and source URL to both AI endpoints', async () => {
+  const html = await source('execution-lab.html');
+  assert.match(html, /async function evidenceForAi\(taskType,sourceUrl\)/);
+  assert.match(html, /await evidenceForAi\(taskType,sourceUrl\)/);
+  assert.match(html, /JSON\.stringify\(\{taskType,title,brief,evidence,sourceUrl\}\)/);
+  const helperStart = html.indexOf('function formatSeoEvidenceForAgents(');
+  const helperEnd = html.indexOf("\\n$('aiDraft').addEventListener", helperStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart);
+  const fields = { facts: { value: 'Vlasnikove proverene napomene' } };
+  let requestedUrl = '';
+  const audit = {
+    ok: true, requestedUrl: 'https://savremenikoreni.com/', finalUrl: 'https://savremenikoreni.com/',
+    httpStatus: 200, contentType: 'text/html',
+    summary: { pass: 2, warn: 1, fail: 0, notChecked: 1 },
+    findings: [{ status: 'WARN', label: 'Meta opis', evidence: 'Nedostaje u početnom HTML-u', recommendation: 'Proveriti opis', evidenceSource: 'initial_html' }],
+    limitations: ['JavaScript nije izvršen.']
+  };
+  const context = {
+    $: id => fields[id],
+    fetch: async (url, options) => {
+      assert.equal(url, '/api/seo-audit');
+      requestedUrl = JSON.parse(options.body).url;
+      return { ok: true, status: 200, json: async () => audit };
+    }
+  };
+  vm.createContext(context);
+  vm.runInContext(html.slice(helperStart, helperEnd) + '\\nglobalThis.evidenceForAi=evidenceForAi;', context);
+  const evidence = await context.evidenceForAi('seo', 'https://savremenikoreni.com/');
+  assert.equal(requestedUrl, 'https://savremenikoreni.com/');
+  assert.match(evidence, /SEO AUDIT DOKAZI/);
+  assert.match(evidence, /HTTP status: 200/);
+  assert.match(evidence, /Meta opis: Nedostaje u početnom HTML-u/);
+  assert.match(evidence, /Vlasnikove proverene napomene/);
+  assert.match(evidence, /JavaScript nije izvršen/);
+  assert.doesNotMatch(evidence, /\\\\n/, 'evidence must contain real line breaks, not literal slash-n text');
+
+  context.fetch = async () => ({ ok: false, status: 502, json: async () => ({ ok: false, error: 'Audit nije dostupan' }) });
+  await assert.rejects(() => context.evidenceForAi('seo', 'https://savremenikoreni.com/'), /Audit nije dostupan/);
+});
+ 
 test('Execution Lab selects a task-specific skill procedure and QA checklist without claiming autonomous execution', async () => {
   const html = await source('execution-lab.html');
   assert.match(html, /const procedures=\{/);
