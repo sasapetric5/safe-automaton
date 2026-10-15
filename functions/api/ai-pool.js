@@ -25,8 +25,25 @@ export async function onRequest(context) {
   if (request.method !== "POST") return json({ error: "Koristi POST." }, 405, { Allow: "POST" });
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) return json({ error: "Cross-origin zahtev nije dozvoljen." }, 403);
-  if (context.env?.SAFE_AUTOMATON_AI_ENABLED !== "true" && context.env?.SAFE_AUTOMATON_AI_ENABLED !== true) {
-    return json({ error: "AI nije eksplicitno omogućen.", diagnosticCode: "AI_ENABLE_FLAG_NOT_TRUE", modelInvoked: false }, 503);
+  // Match the direct AI-task endpoint: tolerate harmless whitespace/case
+  // differences in Cloudflare string variables, but fail closed otherwise.
+  const rawAiEnabled = context.env?.SAFE_AUTOMATON_AI_ENABLED;
+  const normalizedAiEnabled = typeof rawAiEnabled === "string"
+    ? rawAiEnabled.trim().toLowerCase()
+    : rawAiEnabled;
+  if (normalizedAiEnabled !== "true" && normalizedAiEnabled !== true) {
+    return json({
+      error: "AI nije eksplicitno omogućen.",
+      diagnosticCode: "AI_ENABLE_FLAG_NOT_TRUE",
+      observedEnableFlag: rawAiEnabled === undefined
+        ? "missing"
+        : typeof rawAiEnabled === "string"
+          ? (normalizedAiEnabled === "true" ? "string_true" : "string_other")
+          : typeof rawAiEnabled === "boolean" && rawAiEnabled
+            ? "boolean_true"
+            : "other_type",
+      modelInvoked: false
+    }, 503);
   }
   const expected = context.env?.SAFE_AUTOMATON_AI_TOKEN;
   const supplied = request.headers.get("X-Safe-Automaton-AI-Token") || "";
