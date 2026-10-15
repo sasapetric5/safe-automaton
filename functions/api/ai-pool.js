@@ -89,8 +89,24 @@ async function handleRequest(context, deadline) {
   if (!available.length) return json({
     error: "Nema konfigurisanih provajdera u Free AI Pool-u.",
     diagnosticCode: "NO_APPROVED_FREE_PROVIDER",
-    setupHint: "Podesite samo provajdere sa potvrđenim besplatnim API pristupom; za svaki uključite njegov SAFE_AUTOMATON_*_FREE_ONLY=YES_FREE_ONLY.",
-    modelInvoked: false
+    setupHint: "Pregledajte providerDiagnostics. Za Cloudflare proverite binding AI i SAFE_AUTOMATON_CLOUDFLARE_FREE_ONLY=YES_FREE_ONLY u istom Production okruženju. Ne prikazuju se vrednosti tajni.",
+    providerOrder: order,
+    providerDiagnostics: order.map(id => {
+      const config = PROVIDERS[id];
+      return {
+        provider: id,
+        available: false,
+        checks: providerChecks(id, config, context.env)
+      };
+    }),
+    runtime: {
+      host: new URL(request.url).hostname,
+      aiEnabled: true,
+      tokenConfigured: typeof expected === "string" && expected.length >= 32,
+      cloudflareBindingPresent: Boolean(context.env?.AI && typeof context.env.AI.run === "function")
+    },
+    modelInvoked: false,
+    externalActionsTaken: false
   }, 503);
 
   const completed = [];
@@ -147,14 +163,20 @@ async function handleRequest(context, deadline) {
   });
 }
 
+function providerChecks(id, config, env) {
+  const checks = [];
+  if (env[config.approval] !== "YES_FREE_ONLY") checks.push("free_only_approval_missing");
+  if (id === "cloudflare") {
+    if (!env.AI || typeof env.AI.run !== "function") checks.push("workers_ai_binding_missing");
+    return checks;
+  }
+  if (typeof env[config.key] !== "string" || !env[config.key].trim()) checks.push("api_key_missing");
+  if (typeof env[config.model] !== "string" || !env[config.model].trim()) checks.push("model_missing");
+  else if (config.requireFreeModel && !env[config.model].trim().endsWith(":free")) checks.push("model_not_marked_free");
+  return checks;
+}
 function isAvailable(id, config, env) {
-  if (id === "cloudflare") return env[config.approval] === "YES_FREE_ONLY" && Boolean(env.AI && typeof env.AI.run === "function");
-  const approval = env[config.approval];
-  const key = env[config.key];
-  const model = env[config.model];
-  if (approval !== "YES_FREE_ONLY" || typeof key !== "string" || !key.trim() || typeof model !== "string" || !model.trim()) return false;
-  if (config.requireFreeModel && !model.trim().endsWith(":free")) return false;
-  return true;
+  return providerChecks(id, config, env).length === 0;
 }
 function parseOrder(value) {
   if (typeof value !== "string" || !value.trim()) return DEFAULT_ORDER;
