@@ -423,3 +423,61 @@ test('Execution Lab selects a task-specific skill procedure and QA checklist wit
     assert.ok(elements.qaChecks.innerHTML.includes(context.procedures[key].checks[0][0]));
   }
 });
+
+
+test('Execution Lab collects real SEO audit evidence before either AI path and never reuses stale output as evidence', async () => {
+  const html = await source('execution-lab.html');
+  assert.match(html, /async function evidenceForAi\(taskType,source\)/);
+  assert.match(html, /await evidenceForAi\(taskType,sourceUrl\)/);
+  assert.doesNotMatch(html, /\$\('facts'\)\.value\.trim\(\)\|\|artifact/);
+  const agentStart = html.indexOf("$('agentRun').addEventListener");
+  const draftStart = html.indexOf("$('aiDraft').addEventListener");
+  const auditStart = html.indexOf("$('audit').addEventListener");
+  assert.ok(agentStart >= 0 && draftStart >= 0 && auditStart >= 0);
+  assert.ok(html.indexOf('evidence=await evidenceForAi(taskType,sourceUrl)', draftStart) < html.indexOf("fetch('/api/ai-task'", draftStart));
+  assert.ok(html.indexOf('evidence=await evidenceForAi(taskType,sourceUrl)', agentStart) < html.indexOf("fetch('/api/ai-pool'", agentStart));
+  assert.match(html, /seoAuditEvidence=null;seoAuditSource='';\$\('audit'\)\.hidden/);
+  assert.match(html, /\$\('source'\)\.addEventListener\('input',\(\)=>\{seoAuditEvidence=null;seoAuditSource='';\}\)/);
+
+  const helperStart = html.indexOf('function formatSeoEvidenceForAgents(');
+  const helperEnd = html.indexOf('\nfunction formatSeoAudit(', helperStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart);
+  const fields = {
+    taskType: { value: 'seo' },
+    source: { value: 'https://savremenikoreni.com/' },
+    facts: { value: '' },
+    auditStatus: { textContent: '' }
+  };
+  let calls = 0;
+  const audit = {
+    ok: true, requestedUrl: 'https://savremenikoreni.com/', finalUrl: 'https://savremenikoreni.com/',
+    checkedAt: '2026-10-15T12:00:00.000Z', httpStatus: 200, contentType: 'text/html',
+    summary: { pass: 1, warn: 1, fail: 0, notChecked: 1 },
+    auditScope: { note: 'Samo početni HTML.' },
+    findings: [{ id: 'title', label: 'HTML title', status: 'PASS', evidence: 'Naslov pronađen', recommendation: 'Pregledaj relevantnost.' }],
+    limitations: ['JavaScript nije izvršen.']
+  };
+  const context = {
+    fetch: async (url, options) => {
+      calls++;
+      assert.equal(url, '/api/seo-audit');
+      assert.equal(options.method, 'POST');
+      assert.equal(JSON.parse(options.body).url, 'https://savremenikoreni.com/');
+      return { ok: true, status: 200, json: async () => audit };
+    },
+    $: id => fields[id]
+  };
+  vm.createContext(context);
+  vm.runInContext(html.slice(helperStart, helperEnd) + '\nglobalThis.evidenceForAi=evidenceForAi;globalThis.formatSeoEvidenceForAgents=formatSeoEvidenceForAgents;', context);
+  const evidence = await context.evidenceForAi('seo', 'https://savremenikoreni.com/');
+  assert.equal(calls, 1);
+  assert.match(evidence, /SEO AUDIT DOKAZI/);
+  assert.match(evidence, /HTML title: Naslov pronađen/);
+  assert.match(evidence, /HTTP status: 200/);
+  assert.doesNotMatch(evidence, /neka prethodna AI analiza/);
+
+  context.fetch = async () => ({ ok: false, status: 502, json: async () => ({ ok: false, error: 'SEO audit nije dostupan' }) });
+  context.seoAuditEvidence = null;
+  context.seoAuditSource = '';
+  await assert.rejects(() => context.evidenceForAi('seo', 'https://savremenikoreni.com/'), /SEO audit nije dostupan/);
+});
