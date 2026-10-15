@@ -17,7 +17,7 @@ const PROVIDERS = {
 const AGENTS = [
   { id: "planner", name: "Agent 1 — Planner", instruction: "Pretvori brief u kratak plan rada. Navedi cilj, isporuke, korake, nepoznanice, rizike i kriterijume prihvatanja. Ne izmišljaj činjenice." },
   { id: "specialist", name: "Agent 2 — Specialist", instruction: "Izradi konkretan radni rezultat prema brief-u i planu. Odvoji činjenice iz ulaza, pretpostavke i nepoznanice. Ne tvrdi da si izvršio spoljne provere ili testove." },
-  { id: "reviewer", name: "Agent 3 — Reviewer", instruction: "Nezavisno kritički pregledaj plan i nacrt. URL koji je naveden u posebnom polju jeste dostavljen, čak i ako polje dokaza nije popunjeno; nikad ne tvrdi suprotno. Razlikuj URL od dokaza SEO provere. Vrati potpun i sažet završni nacrt sa nalazima koji imaju dokaze ili su označeni kao neprovereni, zatim prioritetne sledeće korake i preostale ljudske provere. Ne ostavljaj prazne naslove/sekcije. Najviše 500 reči. Ne tvrdi da je rezultat nezavisno potvrđen."
+  { id: "reviewer", name: "Agent 3 — Reviewer", instruction: "Nezavisno kritički pregledaj plan i nacrt. URL u posebnom polju jeste dostavljen čak i kada je polje dokaza prazno; nikad ne tvrdi suprotno. URL nije dokaz SEO provere. Vrati kratak, POTPUN završni izveštaj na srpskom, najviše 250 reči i bez tabela. Struktura: 1) Opseg i izvor podataka; 2) Najviše 3 nalaza, svaki označen POTVRĐENO / PRELIMINARNO / NEPROVERENO, uz dokaz i ograničenje; 3) Najviše 3 prioritetna sledeća koraka; 4) Šta još čovek mora proveriti. H1 odsutan iz početnog HTML-a označi samo kao preliminaran dok se ne proveri renderovani DOM. Sama veličina HTML-a nije dokaz sporih performansi; robots=index,follow nije problem samo po sebi. Ne izmišljaj audit nalaze iz samog URL-a. Ne ostavljaj tabele, prazne sekcije ili nedovršene rečenice. Završi doslovno linijom: IZVEŠTAJ ZAVRŠEN. Ne tvrdi da je rezultat nezavisno potvrđen."
 ];
 
 export async function onRequest(context) {
@@ -170,7 +170,7 @@ async function inferWithFallback(available, env, messages) {
   return { output: "", provider: null, model: null, attempts };
 }
 async function callCloudflare(binding, model, messages) {
-  const result = await binding.run(model, { messages, max_completion_tokens: 1400, temperature: 0.2 });
+  const result = await binding.run(model, { messages, max_completion_tokens: 1800, temperature: 0.2 });
   return { output: extractText(result), model };
 }
 async function callOpenAICompatible(id, config, env, messages) {
@@ -178,7 +178,7 @@ async function callOpenAICompatible(id, config, env, messages) {
   const response = await fetch(config.baseUrl + "/chat/completions", {
     method: "POST",
     headers: { "Authorization": "Bearer " + env[config.key], "Content-Type": "application/json" },
-    body: JSON.stringify({ model, messages, max_tokens: 1400, temperature: 0.2 }),
+    body: JSON.stringify({ model, messages, max_tokens: 1800, temperature: 0.2 }),
     signal: AbortSignal.timeout(25_000)
   });
   if (!response.ok) {
