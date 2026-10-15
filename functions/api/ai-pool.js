@@ -1,7 +1,7 @@
 const MAX_BODY_BYTES = 12_000;
 const MAX_TEXT = 4_000;
 const TASKS = new Set(["seo", "research", "qa", "scope"]);
-const DEFAULT_ORDER = ["gemini_primary", "gemini_secondary", "gemini_tertiary", "cloudflare", "groq", "mistral", "openrouter", "huggingface", "deepseek", "xai"];
+const DEFAULT_ORDER = ["gemini_primary", "gemini_secondary", "gemini_tertiary", "cloudflare", "xai", "openrouter", "mistral", "huggingface", "deepseek"];
 const PROVIDERS = {
   gemini_primary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_PRIMARY" },
   gemini_secondary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_SECONDARY" },
