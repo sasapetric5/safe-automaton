@@ -165,11 +165,13 @@ async function handleRequest(context, deadline) {
 
 function providerChecks(id, config, env) {
   const checks = [];
-  if (env[config.approval] !== "YES_FREE_ONLY") checks.push("free_only_approval_missing");
+  // Cloudflare Workers AI is already explicitly enabled by the AI binding.
+  // Do not require a second provider approval flag for the configured binding.
   if (id === "cloudflare") {
     if (!env.AI || typeof env.AI.run !== "function") checks.push("workers_ai_binding_missing");
     return checks;
   }
+  if (env[config.approval] !== "YES_FREE_ONLY") checks.push("free_only_approval_missing");
   if (typeof env[config.key] !== "string" || !env[config.key].trim()) checks.push("api_key_missing");
   if (typeof env[config.model] !== "string" || !env[config.model].trim()) checks.push("model_missing");
   else if (config.requireFreeModel && !env[config.model].trim().endsWith(":free")) checks.push("model_not_marked_free");
