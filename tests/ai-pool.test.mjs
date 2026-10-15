@@ -179,3 +179,31 @@ test("AI disabled fails closed without invoking the model", async () => {
   assert.equal(data.modelInvoked, false);
   assert.equal(modelCalls, 0);
 });
+
+test("AI enable flag accepts harmless case and whitespace normalization", async () => {
+  let modelCalls = 0;
+  const env = baseEnv({
+    SAFE_AUTOMATON_AI_ENABLED: " TRUE ",
+    AI: { run: async () => { modelCalls++; return { response: "normalized flag draft" }; } }
+  });
+  const { response, data } = await call(request(), env);
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.equal(modelCalls, 3);
+});
+
+test("AI enable flag diagnostics do not expose its value and fail closed for invalid values", async () => {
+  let modelCalls = 0;
+  const env = baseEnv({
+    SAFE_AUTOMATON_AI_ENABLED: "yes",
+    AI: { run: async () => { modelCalls++; return { response: "should not run" }; } }
+  });
+  const { response, data } = await call(request(), env);
+  assert.equal(response.status, 503);
+  assert.equal(data.diagnosticCode, "AI_ENABLE_FLAG_NOT_TRUE");
+  assert.equal(data.observedEnableFlag, "string_other");
+  assert.equal(data.modelInvoked, false);
+  assert.doesNotMatch(JSON.stringify(data), /"yes"/);
+  assert.equal(modelCalls, 0);
+});
+
