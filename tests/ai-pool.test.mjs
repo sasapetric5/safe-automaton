@@ -58,7 +58,7 @@ test("AI Pool marks a reviewer report complete only when the explicit end marker
   let calls = 0;
   const env = baseEnv({ AI: { run: async () => {
     calls++;
-    return { response: calls === 3 ? "**Izvor:** Dostavljeni HTML snimak (JavaScript neizvršen)\\n\\nNa osnovu dostavljenog HTML snimka, H1 nedostaje.\\nIZVEŠTAJ ZAVRŠEN" : "Kratak nacrt." };
+    return { response: calls === 3 ? "**Izvor:** Dostavljeni HTML snimak (JavaScript neizvršen)\n\nNa osnovu dostavljenog HTML snimka, H1 nedostaje.\nIZVEŠTAJ ZAVRŠEN" : "Kratak nacrt." };
   } } });
   const { response, data } = await call(request({ ...body, sourceUrl: "https://savremenikoreni.com", evidence: "" }), env);
   assert.equal(response.status, 200);
