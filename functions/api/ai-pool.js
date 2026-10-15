@@ -123,19 +123,26 @@ export async function onRequest(context) {
     }
   }
 
+  const reviewerOutput = completed[2].output.trim();
+  const outputComplete = /(?:^|\\n)IZVEŠTAJ ZAVRŠEN\\.?\\s*$/i.test(reviewerOutput);
+  const completionWarning = outputComplete ? null : "UPOZORENJE: Reviewer nije emitovao obaveznu završnu oznaku. Izveštaj može biti nepotpun; ne izvoziti kao spreman za klijenta. Ponovite generisanje ili skratite ulaz.";
+  const finalDraft = outputComplete ? reviewerOutput : reviewerOutput + "\\n\\n---\\n" + completionWarning;
+
   return json({
     ok: true,
     engine: "free-ai-pool",
     taskType,
     generatedAt: new Date().toISOString(),
-    status: "THREE_AGENT_DRAFT_REQUIRES_HUMAN_REVIEW",
+    outputComplete,
+    completionWarning,
+    status: outputComplete ? "THREE_AGENT_DRAFT_REQUIRES_HUMAN_REVIEW" : "THREE_AGENT_DRAFT_INCOMPLETE_REQUIRES_RETRY",
     providerOrder: available.map(item => item.id),
     providerAttempts,
     verified: false,
     sent: false,
     externalActionsTaken: false,
     agents: completed,
-    finalDraft: completed[2].output,
+    finalDraft,
     disclaimer: "AI nacrt nije nezavisno proverena činjenica. Free-tier oznake su konfiguracione potvrde; proverite da svaki provajder nalog zaista ne može da naplati upotrebu."
   });
 }
