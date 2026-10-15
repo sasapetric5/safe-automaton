@@ -56,7 +56,7 @@ jobs:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           gemini_cli_version: latest
           # Stable Flash default; can be overridden with the non-secret GEMINI_AGENT_MODEL repository variable.
-          gemini_model: ${{ vars.GEMINI_AGENT_MODEL || 'gemini-3.8-flash' }}
+          gemini_model: ${{ vars.GEMINI_AGENT_MODEL || 'gemini-2.5-flash' }}
           upload_artifacts: false
           settings: '{"tools":{"exclude":["run_shell_command","google_web_search","web_fetch"]}}'
           prompt: |
