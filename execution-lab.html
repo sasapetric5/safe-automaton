@@ -209,8 +209,8 @@ $('agentRun').addEventListener('click',async()=>{
     activeRecordId=null;$('output').textContent=artifact;
     $('copy').disabled=$('download').disabled=$('save').disabled=false;
     getChecks().forEach(x=>x.checked=false);qa();
-    $('saved').textContent='Tri AI koraka su završena. Rezultat nije nezavisno proveren niti poslat.';
-    $('auditStatus').textContent='Završeno: Planner → Specialist → Reviewer. Pročitaj izlaze sva tri agenta i završni rezultat.';
+    $('saved').textContent=data.outputComplete===false?'UPOZORENJE: završni izveštaj nema oznaku potpunosti. Ne izvoziti kao gotov rezultat.':'Tri AI koraka su završena. Rezultat nije nezavisno proveren niti poslat.';
+    $('auditStatus').textContent=data.outputComplete===false?'NEPOTPUN IZVEŠTAJ: Reviewer nije emitovao završnu oznaku. Pregledaj upozorenje u rezultatu i ponovi generisanje pre upotrebe.':'Završeno: Planner → Specialist → Reviewer. Pročitaj izlaze sva tri agenta i završni rezultat.';
   }catch(error){
     const message=error?.name==='AbortError'?'Zahtev je prekinut posle 90 sekundi. Server nije potvrdio završetak; proveri konfiguraciju/kvotu pre ponovnog pokušaja.':error instanceof Error?error.message:'nepoznata greška';
     let diagnostic='';
