@@ -126,7 +126,18 @@ export async function onRequest(context) {
   const reviewerOutput = completed[2].output.trim();
   const outputComplete = /(?:^|\n)IZVEŠTAJ ZAVRŠEN\.?\s*$/i.test(reviewerOutput);
   const completionWarning = outputComplete ? null : "UPOZORENJE: Reviewer nije emitovao obaveznu završnu oznaku. Izveštaj može biti nepotpun; ne izvoziti kao spreman za klijenta. Ponovite generisanje ili skratite ulaz.";
-  const finalDraft = outputComplete ? reviewerOutput : reviewerOutput + "\n\n---\n" + completionWarning;
+  const evidenceWarning = sourceUrl && !evidence
+    ? "UPOZORENJE O DOKAZIMA: U ovom zahtevu nije dostavljen HTML snimak niti rezultat stvarnog SEO audita. URL je samo ciljna adresa, ne dokaz da je stranica pregledana. Svaku AI tvrdnju poput „Dostavljeni HTML snimak” ili konkretan SEO nalaz tretirati kao nepotvrđen; ne koristiti ovaj tekst kao audit dok se provera stvarno ne izvrši."
+    : null;
+  let safeReviewerOutput = reviewerOutput;
+  if (evidenceWarning) {
+    safeReviewerOutput = safeReviewerOutput
+      .replace(/\*\*?Izvor:\*\*?\s*Dostavljeni HTML snimak[^\\n]*/gi, "**Izvor:** AI tvrdnja o izvoru — HTML snimak nije dostavljen u ovom zahtevu.")
+      .replace(/Na osnovu dostavljenog HTML snimka/gi, "Bez dostavljenog HTML snimka, ovaj zaključak nije potkrepljen dokazima");
+  }
+  const finalDraft = [safeReviewerOutput, completionWarning, evidenceWarning]
+    .filter(Boolean)
+    .join("\\n\\n---\\n\\n");
 
   return json({
     ok: true,
