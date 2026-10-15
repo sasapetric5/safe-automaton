@@ -463,3 +463,17 @@ test('Execution Lab selects a task-specific skill procedure and QA checklist wit
     assert.ok(elements.qaChecks.innerHTML.includes(context.procedures[key].checks[0][0]));
   }
 });
+
+
+test('Free AI Pool reports safe per-provider configuration diagnostics without exposing secrets', async () => {
+  const api = await source('functions/api/ai-pool.js');
+  assert.doesNotMatch(api, /SAFE_AUTOMATON_FREE_POOL_ENABLED/);
+  assert.match(api, /diagnosticCode: "NO_APPROVED_FREE_PROVIDER"/);
+  assert.match(api, /providerDiagnostics: order\.map/);
+  assert.match(api, /free_only_approval_missing/);
+  assert.match(api, /workers_ai_binding_missing/);
+  assert.match(api, /api_key_missing/);
+  assert.match(api, /model_not_marked_free/);
+  assert.match(api, /modelInvoked: false/);
+  assert.match(api, /externalActionsTaken: false/);
+});
