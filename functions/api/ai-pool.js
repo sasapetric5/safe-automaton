@@ -1,14 +1,14 @@
 const MAX_BODY_BYTES = 12_000;
 const MAX_TEXT = 4_000;
 const TASKS = new Set(["seo", "research", "qa", "scope"]);
-const DEFAULT_ORDER = ["gemini_primary", "gemini_secondary", "gemini_tertiary", "cloudflare", "groq", "cerebras", "openrouter", "huggingface", "deepseek", "xai"];
+const DEFAULT_ORDER = ["gemini_primary", "gemini_secondary", "gemini_tertiary", "cloudflare", "groq", "mistral", "openrouter", "huggingface", "deepseek", "xai"];
 const PROVIDERS = {
   gemini_primary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_PRIMARY" },
   gemini_secondary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_SECONDARY" },
   gemini_tertiary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_TERTIARY" },
   cloudflare: { kind: "workers-ai", model: "@cf/zai-org/glm-4.7-flash", approval: "SAFE_AUTOMATON_CLOUDFLARE_FREE_ONLY" },
   groq: { kind: "openai", baseUrl: "https://api.groq.com/openai/v1", key: "GROQ_API_KEY", approval: "SAFE_AUTOMATON_GROQ_FREE_ONLY", model: "SAFE_AUTOMATON_GROQ_MODEL" },
-  cerebras: { kind: "openai", baseUrl: "https://api.cerebras.ai/v1", key: "CEREBRAS_API_KEY", approval: "SAFE_AUTOMATON_CEREBRAS_FREE_ONLY", model: "SAFE_AUTOMATON_CEREBRAS_MODEL" },
+  mistral: { kind: "openai", baseUrl: "https://api.mistral.ai/v1", key: "MISTRAL_API_KEY", approval: "SAFE_AUTOMATON_MISTRAL_FREE_ONLY", model: "SAFE_AUTOMATON_MISTRAL_MODEL" },
   openrouter: { kind: "openai", baseUrl: "https://openrouter.ai/api/v1", key: "OPENROUTER_API_KEY", approval: "SAFE_AUTOMATON_OPENROUTER_FREE_ONLY", model: "SAFE_AUTOMATON_OPENROUTER_MODEL", requireFreeModel: true },
   huggingface: { kind: "openai", baseUrl: "https://router.huggingface.co/v1", key: "HF_TOKEN", approval: "SAFE_AUTOMATON_HUGGINGFACE_FREE_ONLY", model: "SAFE_AUTOMATON_HUGGINGFACE_MODEL" },
   deepseek: { kind: "openai", baseUrl: "https://api.deepseek.com", key: "DEEPSEEK_API_KEY", approval: "SAFE_AUTOMATON_DEEPSEEK_FREE_ONLY", model: "SAFE_AUTOMATON_DEEPSEEK_MODEL" },
@@ -127,7 +127,7 @@ export async function onRequest(context) {
     externalActionsTaken: false,
     agents: completed,
     finalDraft: completed[2].output,
-    disclaimer: "AI nacrt nije nezavisno proverena činjenica. Obavezna je ljudska provera. Free-tier oznake su konfiguracione potvrde; proverite da svaki provajder nalog zaista ne može da naplati upotrebu."
+    disclaimer: "AI nacrt nije nezavisno proverena činjenica. Free-tier oznake su konfiguracione potvrde; proverite da svaki provajder nalog zaista ne može da naplati upotrebu."
   });
 }
 
