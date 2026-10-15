@@ -65,6 +65,8 @@ test("AI Pool marks a reviewer report complete only when the explicit end marker
   assert.equal(calls, 3);
   assert.equal(data.outputComplete, true);
   assert.equal(data.completionWarning, null);
+  assert.match(data.finalDraft, /UPOZORENJE O DOKAZIMA/);
+  assert.match(data.finalDraft, /Polje dokaza bilo je prazno/);
   assert.match(data.finalDraft, /IZVEŠTAJ ZAVRŠEN$/);
   assert.equal(data.verified, false);
 });
