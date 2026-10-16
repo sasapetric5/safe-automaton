@@ -467,7 +467,7 @@ test('Execution Lab selects a task-specific skill procedure and QA checklist wit
 
 test('Free AI Pool reports safe per-provider configuration diagnostics without exposing secrets', async () => {
   const api = await source('functions/api/ai-pool.js');
-  assert.doesNotMatch(api, /SAFE_AUTOMATON_FREE_POOL_ENABLED/);
+  assert.match(api, /SAFE_AUTOMATON_FREE_POOL_ENABLED !== "true"/);
   assert.match(api, /diagnosticCode: "NO_APPROVED_FREE_PROVIDER"/);
   assert.match(api, /providerDiagnostics: order\.map/);
   assert.match(api, /free_only_approval_missing/);
