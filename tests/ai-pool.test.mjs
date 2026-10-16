@@ -47,8 +47,40 @@ test("Free AI Pool uses the approved Cloudflare provider for all three sequentia
   assert.equal(data.verified, false);
   assert.equal(data.sent, false);
   assert.equal(data.externalActionsTaken, false);
-  assert.equal(data.finalDraft, "Rezultat 3");
+  assert.match(data.finalDraft, /Rezultat 3/);
+  assert.equal(data.outputComplete, false);
+  assert.equal(data.status, "THREE_AGENT_DRAFT_INCOMPLETE_REQUIRES_RETRY");
+  assert.match(data.completionWarning, /može biti nepotpun/i);
 });
+
+test("AI Pool only marks the report complete when the reviewer emits the required end marker", async () => {
+  let calls = 0;
+  const env = baseEnv({
+    AI: { run: async () => {
+      calls++;
+      return { response: calls === 3
+        ? "## Izveštaj\\n\\nNalaz: PRELIMINARNO — potreban dokaz.\\nIZVEŠTAJ ZAVRŠEN"
+        : "Plan / nacrt za pregled." };
+    } }
+  });
+  const { response, data } = await call(request({
+    ...body,
+    taskType: "seo",
+    sourceUrl: "https://savremenikoreni.com",
+    evidence: ""
+  }), env);
+  assert.equal(response.status, 200);
+  assert.equal(calls, 3);
+  assert.equal(data.outputComplete, true);
+  assert.equal(data.completionWarning, null);
+  assert.equal(data.status, "THREE_AGENT_DRAFT_REQUIRES_HUMAN_REVIEW");
+  assert.match(data.finalDraft, /UPOZORENJE O DOKAZIMA/);
+  assert.match(data.finalDraft, /URL je samo ciljna adresa/);
+  assert.match(data.finalDraft, /IZVEŠTAJ ZAVRŠEN$/);
+  assert.equal(data.verified, false);
+  assert.equal(data.sent, false);
+});
+
 
 test("fallback moves to an explicitly approved provider after Cloudflare quota failure without logging secrets", async () => {
   const originalFetch = globalThis.fetch;
