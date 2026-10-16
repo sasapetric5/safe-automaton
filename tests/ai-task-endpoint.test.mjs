@@ -89,6 +89,28 @@ test("AI task endpoint uses the fixed model, bounded output and never claims ver
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
 
+test("AI task endpoint accepts supported string text fields from Workers AI responses", async () => {
+  const input = { taskType: "qa", title: "QA", brief: "Napravi plan." };
+  const responseShapes = [
+    { text: "tekst polje" },
+    { output_text: "output text polje" },
+    { content: "content polje" },
+    { result: { text: "ugnježden tekst" } },
+    { result: { output_text: "ugnježden output text" } },
+    { result: { content: "ugnježden content" } }
+  ];
+  for (const shape of responseShapes) {
+    const { response, data } = await call(request(input), {
+      SAFE_AUTOMATON_AI_ENABLED: "true",
+      SAFE_AUTOMATON_AI_TOKEN: TEST_TOKEN,
+      AI: { run: async () => shape }
+    });
+    assert.equal(response.status, 200, JSON.stringify(shape));
+    assert.equal(data.ok, true);
+    assert.ok(data.draft.length > 0);
+  }
+});
+
 test("AI task endpoint handles empty model output and provider failure safely", async () => {
   const input = { taskType: "qa", title: "QA", brief: "Napravi plan." };
   const base = { SAFE_AUTOMATON_AI_ENABLED: "true", SAFE_AUTOMATON_AI_TOKEN: TEST_TOKEN };
