@@ -3,9 +3,9 @@ const MAX_TEXT = 4_000;
 const TASKS = new Set(["seo", "research", "qa", "scope"]);
 const DEFAULT_ORDER = ["cloudflare", "gemini_primary", "gemini_secondary", "gemini_tertiary", "groq", "mistral", "openrouter", "huggingface", "deepseek", "xai"];
 const PROVIDERS = {
-  gemini_primary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_PRIMARY" },
-  gemini_secondary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_SECONDARY" },
-  gemini_tertiary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_TERTIARY" },
+  gemini_primary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY_PRIMARY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_PRIMARY" },
+  gemini_secondary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY_SECONDARY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_SECONDARY" },
+  gemini_tertiary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY_TERTIARY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_TERTIARY" },
   cloudflare: { kind: "workers-ai", model: "@cf/zai-org/glm-4.7-flash", approval: "SAFE_AUTOMATON_CLOUDFLARE_FREE_ONLY" },
   groq: { kind: "openai", baseUrl: "https://api.groq.com/openai/v1", key: "GROQ_API_KEY", approval: "SAFE_AUTOMATON_GROQ_FREE_ONLY", model: "SAFE_AUTOMATON_GROQ_MODEL" },
   mistral: { kind: "openai", baseUrl: "https://api.mistral.ai/v1", key: "MISTRAL_API_KEY", approval: "SAFE_AUTOMATON_MISTRAL_FREE_ONLY", model: "SAFE_AUTOMATON_MISTRAL_MODEL" },
