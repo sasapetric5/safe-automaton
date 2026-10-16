@@ -21,7 +21,7 @@ Use the same environment (Preview or Production) as the URL being tested.
 - `SAFE_AUTOMATON_CLOUDFLARE_FREE_ONLY=YES_FREE_ONLY`
 - `SAFE_AUTOMATON_AI_ORDER=cloudflare,gemini_primary,gemini_secondary,gemini_tertiary,groq,mistral,openrouter,huggingface,deepseek,xai`
 
-The order above makes Cloudflare the first choice. The Gemini primary/secondary/tertiary slots use the same `GEMINI_API_KEY` with separately selected model variables; they are not three separate API keys.
+The order above makes Cloudflare the first choice. The Gemini primary/secondary/tertiary slots use separate secrets: `GEMINI_API_KEY_PRIMARY`, `GEMINI_API_KEY_SECONDARY`, and `GEMINI_API_KEY_TERTIARY`, alongside their respective model variables.
 
 ## External provider configuration
 
@@ -29,7 +29,7 @@ For every provider, add the API key as a **secret** and the model / approval val
 
 | Provider | Secret name | Free-only approval variable | Model variable |
 |---|---|---|---|
-| Gemini | `GEMINI_API_KEY` | `SAFE_AUTOMATON_GEMINI_FREE_ONLY` | `SAFE_AUTOMATON_GEMINI_MODEL_PRIMARY`, `SAFE_AUTOMATON_GEMINI_MODEL_SECONDARY`, `SAFE_AUTOMATON_GEMINI_MODEL_TERTIARY` |
+| Gemini | `GEMINI_API_KEY_PRIMARY`, `GEMINI_API_KEY_SECONDARY`, `GEMINI_API_KEY_TERTIARY` | `SAFE_AUTOMATON_GEMINI_FREE_ONLY` | `SAFE_AUTOMATON_GEMINI_MODEL_PRIMARY`, `SAFE_AUTOMATON_GEMINI_MODEL_SECONDARY`, `SAFE_AUTOMATON_GEMINI_MODEL_TERTIARY` |
 | Groq | `GROQ_API_KEY` | `SAFE_AUTOMATON_GROQ_FREE_ONLY` | `SAFE_AUTOMATON_GROQ_MODEL` |
 | Mistral | `MISTRAL_API_KEY` | `SAFE_AUTOMATON_MISTRAL_FREE_ONLY` | `SAFE_AUTOMATON_MISTRAL_MODEL` |
 | OpenRouter | `OPENROUTER_API_KEY` | `SAFE_AUTOMATON_OPENROUTER_FREE_ONLY` | `SAFE_AUTOMATON_OPENROUTER_MODEL` — must end with `:free` |
