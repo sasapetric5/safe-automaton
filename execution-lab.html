@@ -209,7 +209,10 @@ $('aiDraft').addEventListener('click',async()=>{
           (bindings ? '; env: '+(bindings.envObjectPresent?'da':'ne')+
             '; enable: '+(bindings.enableFlagPresent?'da':'ne')+
             '; token binding: '+(bindings.tokenBindingPresent?'da':'ne')+
-            '; AI binding: '+(bindings.aiBindingPresent?'da':'ne') : '')+']';
+            '; AI binding: '+(bindings.aiBindingPresent?'da':'ne') : '')+
+          (responseData?.resultShape ? '; odgovor: '+
+            Object.entries(responseData.resultShape).map(([key,value])=>key+'='+(value?'da':'ne')).join(', ') : '')+
+          (Number.isInteger(responseData?.providerStatus) ? '; provider HTTP: '+responseData.providerStatus : '')+']';
       }
     } catch {}
     $('auditStatus').textContent='AI nacrt nije napravljen: '+message+diagnostic+'. Model nije pozvan ako je endpoint odbio zahtev pre inference-a.';
