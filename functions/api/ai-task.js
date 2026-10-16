@@ -126,7 +126,27 @@ export async function onRequest(context) {
     });
     const draft = extractText(result);
     if (!draft) {
-      return json({ error: "AI model nije vratio upotrebljiv tekst. Nacrt nije kreiran." }, 502);
+      const resultShape = {
+        resultType: result === null ? "null" : Array.isArray(result) ? "array" : typeof result,
+        responseString: typeof result?.response === "string",
+        nestedResponseString: typeof result?.result?.response === "string",
+        choicesArray: Array.isArray(result?.choices),
+        firstChoiceMessageContentString: typeof result?.choices?.[0]?.message?.content === "string",
+        textString: typeof result?.text === "string",
+        outputTextString: typeof result?.output_text === "string",
+        contentString: typeof result?.content === "string"
+      };
+      return json({
+        error: "AI model nije vratio upotrebljiv tekst. Nacrt nije kreiran.",
+        diagnosticCode: "AI_EMPTY_OR_UNRECOGNIZED_OUTPUT",
+        runtimeHost: new URL(request.url).hostname,
+        modelInvoked: true,
+        model: MODEL,
+        resultShape,
+        verified: false,
+        sent: false,
+        externalActionsTaken: false
+      }, 502);
     }
     return json({
       ok: true,
@@ -141,10 +161,29 @@ export async function onRequest(context) {
       disclaimer: "AI nacrt nije nezavisno proverena činjenica. Pregledaj dokaze i preporuke pre upotrebe.",
       draft
     });
-  } catch {
-    // Do not expose provider internals, prompts, or request content.
+  } catch (error) {
+    // Return only safe metadata; never expose provider messages, prompts, or request content.
+    const status = Number(error?.status ?? error?.statusCode);
+    const diagnosticCode = status === 429
+      ? "WORKERS_AI_QUOTA_OR_RATE_LIMIT"
+      : status === 401 || status === 403
+        ? "WORKERS_AI_AUTH_OR_PERMISSION"
+        : status === 404
+          ? "WORKERS_AI_MODEL_NOT_FOUND"
+          : error?.name === "AbortError"
+            ? "WORKERS_AI_TIMEOUT"
+            : "WORKERS_AI_CALL_FAILED";
     return json({
-      error: "Workers AI zahtev nije uspeo. Proveri Cloudflare binding, model i besplatnu kvotu; nije izvršena spoljna radnja."
+      error: "Workers AI zahtev nije uspeo. Proveri binding, model, dozvole i kvotu; nije izvršena spoljna radnja.",
+      diagnosticCode,
+      runtimeHost: new URL(request.url).hostname,
+      modelInvoked: true,
+      model: MODEL,
+      providerStatus: Number.isInteger(status) && status >= 400 && status <= 599 ? status : null,
+      errorType: error instanceof Error ? error.name : "unknown",
+      verified: false,
+      sent: false,
+      externalActionsTaken: false
     }, 502);
   }
 }
