@@ -59,7 +59,7 @@ test("AI Pool only marks the report complete when the reviewer emits the require
     AI: { run: async () => {
       calls++;
       return { response: calls === 3
-        ? "## Izveštaj\\n\\nNalaz: PRELIMINARNO — potreban dokaz.\\nIZVEŠTAJ ZAVRŠEN"
+        ? "## Izveštaj\n\nNalaz: PRELIMINARNO — potreban dokaz.\nIZVEŠTAJ ZAVRŠEN"
         : "Plan / nacrt za pregled." };
     } }
   });
