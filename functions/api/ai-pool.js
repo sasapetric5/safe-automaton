@@ -1,7 +1,7 @@
 const MAX_BODY_BYTES = 12_000;
 const MAX_TEXT = 4_000;
 const TASKS = new Set(["seo", "research", "qa", "scope"]);
-const DEFAULT_ORDER = ["gemini_primary", "gemini_secondary", "gemini_tertiary", "cloudflare", "xai", "openrouter", "mistral", "huggingface", "deepseek"];
+const DEFAULT_ORDER = ["cloudflare", "gemini_primary", "gemini_secondary", "gemini_tertiary", "groq", "mistral", "openrouter", "huggingface", "deepseek", "xai"];
 const PROVIDERS = {
   gemini_primary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_PRIMARY" },
   gemini_secondary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_SECONDARY" },
@@ -17,7 +17,7 @@ const PROVIDERS = {
 const AGENTS = [
   { id: "planner", name: "Agent 1 — Planner", instruction: "Pretvori brief u kratak plan rada. Navedi cilj, isporuke, korake, nepoznanice, rizike i kriterijume prihvatanja. Ne izmišljaj činjenice." },
   { id: "specialist", name: "Agent 2 — Specialist", instruction: "Izradi konkretan radni rezultat prema brief-u i planu. Odvoji činjenice iz ulaza, pretpostavke i nepoznanice. Ne tvrdi da si izvršio spoljne provere ili testove." },
-  { id: "reviewer", name: "Agent 3 — Reviewer", instruction: "Nezavisno kritički pregledaj plan i nacrt. Identifikuj nepotkrepljene tvrdnje, nedostajuće dokaze, greške i rizike; zatim napiši poboljšan završni nacrt i listu preostalih ljudskih provera. Ne tvrdi da je rezultat nezavisno potvrđen." }
+  { id: "reviewer", name: "Agent 3 — Reviewer", instruction: "Nezavisno kritički pregledaj plan i nacrt. Vrati kratak, POTPUN završni izveštaj na srpskom, najviše 250 reči i bez tabela. Struktura: 1) Opseg i izvor podataka; 2) Najviše 3 nalaza, svaki označen POTVRĐENO / PRELIMINARNO / NEPROVERENO, uz dokaz i ograničenje; 3) Najviše 3 prioritetna sledeća koraka; 4) Šta još čovek mora proveriti. H1 odsutan iz početnog HTML-a označi samo kao preliminaran dok se ne proveri renderovani DOM. Sama veličina HTML-a nije dokaz sporih performansi; robots=index,follow nije problem samo po sebi. Ne izmišljaj audit nalaze iz samog URL-a. Ne ostavljaj tabele, prazne sekcije ili nedovršene rečenice. Završi doslovno linijom: IZVEŠTAJ ZAVRŠEN. Ne tvrdi da je rezultat nezavisno potvrđen." }
 ];
 
 export async function onRequest(context) {
@@ -85,6 +85,7 @@ async function handleRequest(context, deadline) {
   const title = bounded(input?.title, 180);
   const brief = bounded(input?.brief, MAX_TEXT);
   const evidence = bounded(input?.evidence, MAX_TEXT);
+  const sourceUrl = bounded(input?.sourceUrl, 1_000);
   if (!TASKS.has(taskType)) return json({ error: "Nepoznat tip zadatka." }, 400);
   if (!title || !brief) return json({ error: "Naslov i brief su obavezni." }, 400);
 
@@ -130,7 +131,7 @@ async function handleRequest(context, deadline) {
       "Tip zadatka: " + taskType,
       "Uloga: " + agent.name + ". " + agent.instruction
     ].join("\n");
-    const user = "NASLOV:\n" + title + "\n\nBRIEF:\n" + brief + "\n\nDOKAZI / OGRANIČENJA:\n" + (evidence || "Nisu dostavljeni.") + prior;
+    const user = "NASLOV:\n" + title + "\n\nBRIEF:\n" + brief + "\n\nURL CILJNE STRANICE (naveden od korisnika; nije sam po sebi dokaz SEO provere):\n" + (sourceUrl || "Nije naveden.") + "\n\nDOKAZI / OGRANIČENJA:\n" + (evidence || "Nisu dostavljeni.") + "\n\nVažno: ne tvrdi da URL nije dostavljen ako je naveden iznad. URL nije isto što i dokaz da je SEO audit izvršen. Ako audit nalaz nije u dokazima, jasno reci da agent nije dobio rezultate audita u ovom pozivu." + prior;
     const result = await inferWithFallback(available, context.env, [
       { role: "system", content: system }, { role: "user", content: user }
     ], deadline);
@@ -150,19 +151,29 @@ async function handleRequest(context, deadline) {
     if (agent.id === "specialist") specialistDraft = result.output;
   }
 
+  const reviewerOutput = completed[2].output.trim();
+  const outputComplete = /(?:^|\\n)IZVEŠTAJ ZAVRŠEN\\.?\\s*$/i.test(reviewerOutput);
+  const completionWarning = outputComplete ? null : "UPOZORENJE: Reviewer nije emitovao obaveznu završnu oznaku. Izveštaj može biti nepotpun; ne izvoziti kao spreman za klijenta. Ponovite generisanje ili skratite ulaz.";
+  const evidenceWarning = sourceUrl && !evidence
+    ? "UPOZORENJE O DOKAZIMA: U ovom zahtevu nije dostavljen HTML snimak niti rezultat stvarnog SEO audita. URL je samo ciljna adresa, ne dokaz da je stranica pregledana. Svaku AI tvrdnju o konkretnom SEO nalazu tretirati kao nepotvrđenu dok se ne proveri."
+    : null;
+  const finalDraft = [evidenceWarning, reviewerOutput, completionWarning].filter(Boolean).join("\\n\\n---\\n\\n");
+
   return json({
     ok: true,
     engine: "free-ai-pool",
     taskType,
     generatedAt: new Date().toISOString(),
-    status: "THREE_AGENT_DRAFT_REQUIRES_HUMAN_REVIEW",
+    outputComplete,
+    completionWarning,
+    status: outputComplete ? "THREE_AGENT_DRAFT_REQUIRES_HUMAN_REVIEW" : "THREE_AGENT_DRAFT_INCOMPLETE_REQUIRES_RETRY",
     providerOrder: available.map(item => item.id),
     providerAttempts,
     verified: false,
     sent: false,
     externalActionsTaken: false,
     agents: completed,
-    finalDraft: completed[2].output,
+    finalDraft,
     disclaimer: "AI nacrt nije nezavisno proverena činjenica. Free-tier oznake su konfiguracione potvrde; proverite da svaki provajder nalog zaista ne može da naplati upotrebu."
   });
 }
@@ -214,7 +225,7 @@ async function inferWithFallback(available, env, messages, deadline) {
   return { output: "", provider: null, model: null, attempts };
 }
 async function callCloudflare(binding, model, messages) {
-  const result = await binding.run(model, { messages, max_completion_tokens: 650, temperature: 0.2 });
+  const result = await binding.run(model, { messages, max_completion_tokens: 1_000, temperature: 0.2 });
   return { output: extractText(result), model };
 }
 async function callOpenAICompatible(id, config, env, messages, timeoutMs = 7_000) {
@@ -222,7 +233,7 @@ async function callOpenAICompatible(id, config, env, messages, timeoutMs = 7_000
   const response = await fetch(config.baseUrl + "/chat/completions", {
     method: "POST",
     headers: { "Authorization": "Bearer " + env[config.key], "Content-Type": "application/json" },
-    body: JSON.stringify({ model, messages, max_tokens: 650, temperature: 0.2 }),
+    body: JSON.stringify({ model, messages, max_tokens: 1_000, temperature: 0.2 }),
     signal: AbortSignal.timeout(timeoutMs)
   });
   if (!response.ok) {
