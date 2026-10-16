@@ -134,7 +134,10 @@ export async function onRequest(context) {
         firstChoiceMessageContentString: typeof result?.choices?.[0]?.message?.content === "string",
         textString: typeof result?.text === "string",
         outputTextString: typeof result?.output_text === "string",
-        contentString: typeof result?.content === "string"
+        contentString: typeof result?.content === "string",
+        nestedTextString: typeof result?.result?.text === "string",
+        nestedOutputTextString: typeof result?.result?.output_text === "string",
+        nestedContentString: typeof result?.result?.content === "string"
       };
       return json({
         error: "AI model nije vratio upotrebljiv tekst. Nacrt nije kreiran.",
@@ -193,10 +196,23 @@ function boundedText(value, limit) {
 }
 
 function extractText(result) {
-  if (typeof result?.response === "string") return result.response.trim();
-  if (typeof result?.result?.response === "string") return result.result.response.trim();
-  const content = result?.choices?.[0]?.message?.content;
-  return typeof content === "string" ? content.trim() : "";
+  // Workers AI model adapters can return different documented text fields.
+  // Accept only explicit string-valued text fields; never stringify objects or tool metadata.
+  const candidates = [
+    result?.response,
+    result?.result?.response,
+    result?.choices?.[0]?.message?.content,
+    result?.text,
+    result?.output_text,
+    result?.content,
+    result?.result?.text,
+    result?.result?.output_text,
+    result?.result?.content
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+  return "";
 }
 
 function json(data, status = 200, extraHeaders = {}) {
