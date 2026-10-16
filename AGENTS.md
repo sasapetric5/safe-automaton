@@ -31,3 +31,13 @@
 - Reviewer: independently challenge unsupported claims and confirm required report structure.
 - Deterministic safety/verification checks decide whether a result is complete; agent agreement alone is not a PASS.
 - Start with read-only diagnosis and tests. No auto-repair loop may change production or perform external actions.
+
+## ECC v2.2.3 skill routing
+Use the project-local skill instructions when a task matches their purpose; skills are guidance for development agents, not runtime agents inside the deployed website.
+- UI control appears inert, hangs, or shows no result: `.agents/skills/click-path-audit/SKILL.md` first, then `.agents/skills/agent-introspection-debugging/SKILL.md` for repeated failures.
+- API contract, request validation, status codes, or error envelopes: `.agents/skills/api-design/SKILL.md`.
+- Cloudflare Pages Function / server-side flow: `.agents/skills/backend-patterns/SKILL.md`.
+- General refactor/code quality: `.agents/skills/coding-standards/SKILL.md`.
+- Define measurable pass/fail criteria for AI behavior: `.agents/skills/eval-harness/SKILL.md`.
+- Before changing code: use `tdd-workflow`; after changes use `verification-loop`; use `security-review` for trust boundaries and secrets; use `e2e-testing` and `build-deployment-verification` for user journeys/deploy claims.
+- Never run a skill as permission to use paid services, expose secrets, merge `main`, alter production, or perform external actions. Existing authorization and cost rules take precedence.
