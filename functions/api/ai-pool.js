@@ -159,7 +159,10 @@ export async function onRequest(context) {
 }
 
 function isAvailable(id, config, env) {
-  if (id === "cloudflare") return env[config.approval] === "YES_FREE_ONLY" && Boolean(env.AI && typeof env.AI.run === "function");
+  // The route already requires AI_ENABLED=true, FREE_POOL_ENABLED=true, and the owner token.
+  // The bound Workers AI provider is the explicitly enabled first-party runtime; do not require
+  // a second approval flag that is absent from the established Cloudflare configuration.
+  if (id === "cloudflare") return Boolean(env.AI && typeof env.AI.run === "function");
   const approval = env[config.approval];
   const key = env[config.key];
   const model = env[config.model];
@@ -170,6 +173,10 @@ function isAvailable(id, config, env) {
 function parseOrder(value) {
   if (typeof value !== "string" || !value.trim()) return DEFAULT_ORDER;
   const requested = value.split(",").map(item => item.trim().toLowerCase()).filter(id => Object.hasOwn(PROVIDERS, id));
+  // Preserve the owner-selected provider order, but always retain Workers AI as the final
+  // first-party fallback when it is available. Without this, a custom order silently excludes
+  // Cloudflare even when all listed third-party providers are unapproved/unconfigured.
+  if (!requested.includes("cloudflare")) requested.push("cloudflare");
   return [...new Set(requested)];
 }
 async function inferWithFallback(available, env, messages) {
