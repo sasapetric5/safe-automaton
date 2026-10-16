@@ -1,6 +1,6 @@
 # Safe Automaton Agent Orchestrator — Technical Plan
 
-Status: PROPOSAL ONLY — not implemented.
+Status: PROPOSAL for the broader orchestrator. Selected ECC skills, Free AI Pool report-completeness checks, provider approval gates, and bounded UI waits are implemented on `integration/main-consolidation`; a full orchestrator with persistent task state, deterministic independent verification, and scheduling is not yet implemented.
 Target repository: `sasapetric5/safe-automaton`
 ECC reference: `affaan-m/ECC`, version `v2.2.3`
 Safety baseline: 0 EUR; no paid APIs; human approval for every external action; no automatic offers/messages/applications/publishing/purchases; no changes to `main`, Cloudflare settings, or production deployment without explicit approval.
