@@ -10,6 +10,11 @@ Included ECC skill files:
 - `.agents/skills/security-review/SKILL.md`
 - `.agents/skills/verification-loop/SKILL.md`
 - `.agents/skills/e2e-testing/SKILL.md`
+- `.agents/skills/agent-introspection-debugging/SKILL.md`
+- `.agents/skills/api-design/SKILL.md`
+- `.agents/skills/backend-patterns/SKILL.md`
+- `.agents/skills/coding-standards/SKILL.md`
+- `.agents/skills/eval-harness/SKILL.md`
 
 The following additional project-specific skills were authored for Safe Automaton and are not represented as upstream ECC files:
 - `.agents/skills/click-path-audit/SKILL.md`
