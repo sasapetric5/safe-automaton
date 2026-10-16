@@ -152,12 +152,12 @@ async function handleRequest(context, deadline) {
   }
 
   const reviewerOutput = completed[2].output.trim();
-  const outputComplete = /(?:^|\\n)IZVEŠTAJ ZAVRŠEN\\.?\\s*$/i.test(reviewerOutput);
+  const outputComplete = /(?:^|\n)IZVEŠTAJ ZAVRŠEN\.?\s*$/i.test(reviewerOutput);
   const completionWarning = outputComplete ? null : "UPOZORENJE: Reviewer nije emitovao obaveznu završnu oznaku. Izveštaj može biti nepotpun; ne izvoziti kao spreman za klijenta. Ponovite generisanje ili skratite ulaz.";
   const evidenceWarning = sourceUrl && !evidence
     ? "UPOZORENJE O DOKAZIMA: U ovom zahtevu nije dostavljen HTML snimak niti rezultat stvarnog SEO audita. URL je samo ciljna adresa, ne dokaz da je stranica pregledana. Svaku AI tvrdnju o konkretnom SEO nalazu tretirati kao nepotvrđenu dok se ne proveri."
     : null;
-  const finalDraft = [evidenceWarning, reviewerOutput, completionWarning].filter(Boolean).join("\\n\\n---\\n\\n");
+  const finalDraft = [evidenceWarning, reviewerOutput, completionWarning].filter(Boolean).join("\n\n---\n\n");
 
   return json({
     ok: true,
