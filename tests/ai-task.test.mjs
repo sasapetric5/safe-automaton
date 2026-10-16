@@ -85,3 +85,26 @@ test('AI endpoint rejects empty model output and hides provider exception detail
   assert.equal(failure.status, 502);
   assert.doesNotMatch(await failure.text(), /secret internal details/);
 });
+
+test('AI endpoint returns safe diagnostics when Workers AI returns an unrecognized empty shape', async () => {
+  const env = { ...enabledEnv, AI: { run: async () => ({ result: { text: 'shape mismatch' } }) } };
+  const response = await onRequest({ request: request(valid), env });
+  const data = await response.json();
+  assert.equal(response.status, 502);
+  assert.equal(data.diagnosticCode, 'AI_EMPTY_OR_UNRECOGNIZED_OUTPUT');
+  assert.equal(data.modelInvoked, true);
+  assert.equal(data.resultShape.nestedResponseString, false);
+  assert.equal(data.resultShape.outputTextString, false);
+  assert.doesNotMatch(JSON.stringify(data), /shape mismatch/);
+});
+
+test('AI endpoint classifies provider failures without exposing exception messages', async () => {
+  const env = { ...enabledEnv, AI: { run: async () => { const error = new Error('private provider details'); error.status = 429; throw error; } } };
+  const response = await onRequest({ request: request(valid), env });
+  const data = await response.json();
+  assert.equal(response.status, 502);
+  assert.equal(data.diagnosticCode, 'WORKERS_AI_QUOTA_OR_RATE_LIMIT');
+  assert.equal(data.providerStatus, 429);
+  assert.equal(data.modelInvoked, true);
+  assert.doesNotMatch(JSON.stringify(data), /private provider details/);
+});
