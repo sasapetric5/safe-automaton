@@ -12,6 +12,12 @@ The workflows are informed by the public repository [coreyhaines31/marketingskil
 - `copywriting/SKILL.md` — conversion copy based on verified product facts and audience evidence.
 - `customer-research/SKILL.md` — structured synthesis of public/authorized sources without inventing interviews or customer quotes.
 
+## ECC development skills
+
+Selected ECC v2.2.3 development-time skills are stored under `.agents/skills/`: TDD workflow, security review, verification loop, E2E testing, agent introspection/debugging, API design, backend patterns, coding standards, and eval harness. Project-specific click-path and build/deployment verification skills complement them.
+
+These are instruction files for a compatible coding agent (such as Codex) to consult during development. They are **not** separate agents running inside the deployed RankGeo.dev app, do not automatically add API capacity, and do not make the current UI autonomous. App-runtime roles need explicit implementation, authorization, tests, and observable UI integration.
+
 ## Safe Automaton execution rules
 
 - Authorized spend: **0 EUR**. Do not call paid APIs, subscribe, create accounts, or use paid hosted services.
