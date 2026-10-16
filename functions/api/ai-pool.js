@@ -70,9 +70,9 @@ async function handleRequest(context, deadline) {
   const supplied = request.headers.get("X-Safe-Automaton-AI-Token") || "";
   if (typeof expected !== "string" || expected.length < 32) return json({ error: "AI pristup nije bezbedno konfigurisan." }, 503);
   if (supplied.length < 32 || supplied !== expected) return json({ error: "Nedostaje ili nije ispravan AI pristupni token." }, 401);
-  // The pool master flag was redundant: each provider is independently gated by
-  // its explicit *_FREE_ONLY approval, configured key/model, and (for Cloudflare) AI binding.
-  // Continue to provider discovery so a missing provider approval yields an actionable diagnostic.
+  if (context.env?.SAFE_AUTOMATON_FREE_POOL_ENABLED !== "true") {
+    return json({ error: "Free AI Pool nije eksplicitno omogućen.", diagnosticCode: "FREE_POOL_DISABLED", modelInvoked: false }, 503);
+  }
   const declaredLength = Number(request.headers.get("Content-Length") || 0);
   if (declaredLength > MAX_BODY_BYTES) return json({ error: "Zahtev je prevelik." }, 413);
   let raw;
@@ -184,6 +184,7 @@ function providerChecks(id, config, env) {
   // Do not require a second provider approval flag for the configured binding.
   if (id === "cloudflare") {
     if (!env.AI || typeof env.AI.run !== "function") checks.push("workers_ai_binding_missing");
+    if (env[config.approval] !== "YES_FREE_ONLY") checks.push("free_only_approval_missing");
     return checks;
   }
   if (env[config.approval] !== "YES_FREE_ONLY") checks.push("free_only_approval_missing");
