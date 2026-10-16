@@ -1,0 +1,28 @@
+name: Repository smoke checks
+
+on:
+  push:
+    branches:
+      - phase-0-1-safe-research-foundation
+      - feature/free-ai-pool-router
+      - main
+      - integration/main-consolidation
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run repository smoke tests
+        run: node --experimental-default-type=module --test tests/repository-smoke.test.mjs tests/task-contract.test.mjs tests/ai-pool.test.mjs tests/ai-task.test.mjs tests/ai-task-endpoint.test.mjs tests/agent-run.test.mjs
