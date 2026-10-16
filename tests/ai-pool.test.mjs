@@ -249,3 +249,22 @@ test("AI enable flag diagnostics do not expose its value and fail closed for inv
   assert.equal(modelCalls, 0);
 });
 
+
+
+test("Workers AI remains the free fallback without a duplicate provider approval flag", async () => {
+  const calls = [];
+  const env = baseEnv({
+    SAFE_AUTOMATON_AI_ORDER: "groq,mistral",
+    SAFE_AUTOMATON_CLOUDFLARE_FREE_ONLY: undefined,
+    AI: { run: async (model, input) => { calls.push({ model, input }); return { response: "Workers AI result " + calls.length }; } }
+  });
+  delete env.SAFE_AUTOMATON_CLOUDFLARE_FREE_ONLY;
+  const { response, data } = await call(request(), env);
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 3);
+  assert.ok(data.agents.every(agent => agent.provider === "cloudflare"));
+  assert.ok(data.providerOrder.includes("cloudflare"));
+  assert.equal(data.verified, false);
+  assert.equal(data.sent, false);
+  assert.equal(data.externalActionsTaken, false);
+});
