@@ -87,13 +87,14 @@ test('AI endpoint rejects empty model output and hides provider exception detail
 });
 
 test('AI endpoint returns safe diagnostics when Workers AI returns an unrecognized empty shape', async () => {
-  const env = { ...enabledEnv, AI: { run: async () => ({ result: { text: 'shape mismatch' } }) } };
+  const env = { ...enabledEnv, AI: { run: async () => ({ result: { payload: 'shape mismatch' } }) } };
   const response = await onRequest({ request: request(valid), env });
   const data = await response.json();
   assert.equal(response.status, 502);
   assert.equal(data.diagnosticCode, 'AI_EMPTY_OR_UNRECOGNIZED_OUTPUT');
   assert.equal(data.modelInvoked, true);
   assert.equal(data.resultShape.nestedResponseString, false);
+  assert.equal(data.resultShape.nestedTextString, false);
   assert.equal(data.resultShape.outputTextString, false);
   assert.doesNotMatch(JSON.stringify(data), /shape mismatch/);
 });
