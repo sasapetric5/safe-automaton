@@ -57,6 +57,10 @@ test('Execution Lab labels templates and QA as local/manual, not verified AI exe
   assert.match(html, /Ove kućice nisu automatski dokazi/);
   assert.match(html, /ne pokreće proizvoljan kod/);
   assert.match(html, /safe-automaton-execution-lab-v1/);
+  assert.match(html, /setTimeout\(\(\)=>controller\.abort\(\),45000\)/);
+  assert.match(html, /setTimeout\(\(\)=>controller\.abort\(\),90000\)/);
+  assert.match(html, /data\.outputComplete===false/);
+  assert.match(html, /Server je vratio neispravan odgovor \(HTTP/);
 });
 
 test('Grants.gov endpoint validates method/input and does not log request body or secrets', async () => {
