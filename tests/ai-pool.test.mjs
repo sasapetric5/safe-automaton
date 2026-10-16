@@ -163,7 +163,8 @@ test("Gemini model slots fall back in order before moving to another provider", 
       SAFE_AUTOMATON_GEMINI_FREE_ONLY: "YES_FREE_ONLY",
       SAFE_AUTOMATON_GEMINI_MODEL_PRIMARY: "gemini-3.8-flash",
       SAFE_AUTOMATON_GEMINI_MODEL_SECONDARY: "gemini-3.6-flash",
-      GEMINI_API_KEY: "secret-gemini"
+      GEMINI_API_KEY_PRIMARY: "secret-gemini-primary",
+      GEMINI_API_KEY_SECONDARY: "secret-gemini-secondary"
     });
     const { response, data } = await call(request(), env);
     assert.equal(response.status, 200);
