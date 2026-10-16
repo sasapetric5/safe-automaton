@@ -253,9 +253,11 @@ $('agentRun').addEventListener('click',async()=>{
         $('copy').disabled=$('download').disabled=$('save').disabled=false;
         getChecks().forEach(x=>x.checked=false);qa();
       }
-      throw new Error((data.error||'Tok agenata nije uspeo')+(data.failedAgent?' (zaustavljeno kod: '+data.failedAgent+')':''));
+      const attempts=Array.isArray(data.providerAttempts)&&data.providerAttempts.length?' Pokušaji provajdera: '+data.providerAttempts.map(a=>a.provider+': '+a.status).join(', ')+'.':'';
+      throw new Error((data.error||'Tok agenata nije uspeo')+(data.failedAgent?' (zaustavljeno kod: '+data.failedAgent+')':'')+attempts);
     }
-    artifact='# REZULTAT TOKA 3 AI AGENTA — '+title+'\n\n'+data.agents.map(a=>'## '+a.name+'\n\n'+a.output).join('\n\n---\n\n')+'\n\n---\n\n## Završni rezultat za ljudski pregled\n\n'+data.finalDraft+'\n\n## Status\n'+data.status+'\nProvajderi/modeli: '+data.agents.map(a=>a.provider+' / '+a.model).join(', ')+'\nVreme: '+data.generatedAt+'\nNezavisno provereno: ne. Poslato klijentu: ne. Spoljne radnje: nijedna.';
+    const providerTrace=Array.isArray(data.providerAttempts)?data.providerAttempts.map(a=>a.provider+': '+a.status).join('; '):'nije dostupan';
+    artifact='# REZULTAT TOKA 3 AI AGENTA — '+title+'\n\n'+data.agents.map(a=>'## '+a.name+'\n\n'+a.output).join('\n\n---\n\n')+'\n\n---\n\n## Završni rezultat za ljudski pregled\n\n'+data.finalDraft+'\n\n## Status\n'+data.status+'\nProvajderi/modeli: '+data.agents.map(a=>a.provider+' / '+a.model).join(', ')+'\nPokušaji provajdera: '+providerTrace+'\nVreme: '+data.generatedAt+'\nNezavisno provereno: ne. Poslato klijentu: ne. Spoljne radnje: nijedna.';
     activeRecordId=null;$('output').textContent=artifact;
     $('copy').disabled=$('download').disabled=$('save').disabled=false;
     getChecks().forEach(x=>x.checked=false);qa();
@@ -273,7 +275,8 @@ $('agentRun').addEventListener('click',async()=>{
           '; enable: '+(b.enableFlagPresent?'da':'ne')+
           '; token binding: '+(b.tokenBindingPresent?'da':'ne')+
           '; AI binding: '+(b.aiBindingPresent?'da':'ne'):'')+
-        '; model pozvan: '+(d.modelInvoked?'da':'ne')+']';
+        '; model pozvan: '+(d.modelInvoked?'da':'ne')+
+        (Array.isArray(d.providerAttempts)&&d.providerAttempts.length?'; pokušaji provajdera: '+d.providerAttempts.map(a=>a.provider+': '+a.status).join(', '):'')+']';
     }
     $('auditStatus').textContent='Tok 3 AI agenta nije završen: '+message+diagnostic+'. Nema spoljne radnje.';
   }finally{
