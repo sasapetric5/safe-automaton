@@ -60,6 +60,8 @@ test('Execution Lab labels templates and QA as local/manual, not verified AI exe
   assert.match(html, /setTimeout\(\(\)=>controller\.abort\(\),45000\)/);
   assert.match(html, /setTimeout\(\(\)=>controller\.abort\(\),90000\)/);
   assert.match(html, /data\.outputComplete===false/);
+  assert.match(html, /Pokušaji provajdera/);
+  assert.match(html, /a\.provider\+\x27: \x27\+a\.status/);
   assert.match(html, /Server je vratio neispravan odgovor \(HTTP/);
 });
 
