@@ -116,6 +116,91 @@ test("fallback moves to an explicitly approved provider after Cloudflare quota f
   } finally { globalThis.fetch = originalFetch; }
 });
 
+test("empty Cloudflare output falls back to the next approved provider without exposing credentials", async () => {
+  const originalFetch = globalThis.fetch;
+  let externalCalls = 0;
+  globalThis.fetch = async (url, options) => {
+    externalCalls++;
+    assert.equal(url, "https://api.groq.com/openai/v1/chat/completions");
+    return new Response(JSON.stringify({
+      choices: [{ message: { content: externalCalls === 3 ? "Pregled završен.\\nIZVEŠTAJ ZAVRŠEN" : "Rezultat za pregled." } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const env = baseEnv({
+      SAFE_AUTOMATON_AI_ORDER: "cloudflare,groq",
+      SAFE_AUTOMATON_GROQ_FREE_ONLY: "YES_FREE_ONLY",
+      SAFE_AUTOMATON_GROQ_MODEL: "openai/gpt-oss-20b",
+      GROQ_API_KEY: "secret-empty-fallback-test",
+      AI: { run: async () => ({ response: "   " }) }
+    });
+    const { response, data } = await call(request(), env);
+    assert.equal(response.status, 200);
+    assert.equal(externalCalls, 3);
+    assert.ok(data.agents.every(agent => agent.provider === "groq"));
+    assert.ok(data.providerAttempts.filter(attempt => attempt.provider === "cloudflare").every(attempt => attempt.status === "empty_response"));
+    assert.doesNotMatch(JSON.stringify(data), /secret-empty-fallback-test/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("malformed provider JSON falls back safely and does not expose response details", async () => {
+  const originalFetch = globalThis.fetch;
+  let externalCalls = 0;
+  globalThis.fetch = async () => {
+    externalCalls++;
+    return new Response("malformed secret provider response", {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  };
+  try {
+    const env = baseEnv({
+      SAFE_AUTOMATON_AI_ORDER: "groq,cloudflare",
+      SAFE_AUTOMATON_GROQ_FREE_ONLY: "YES_FREE_ONLY",
+      SAFE_AUTOMATON_GROQ_MODEL: "openai/gpt-oss-20b",
+      GROQ_API_KEY: "secret-malformed-test",
+      AI: { run: async () => ({ response: "Pregled za ljudsku proveru." }) }
+    });
+    const { response, data } = await call(request(), env);
+    assert.equal(response.status, 200);
+    assert.equal(externalCalls, 3);
+    assert.ok(data.agents.every(agent => agent.provider === "cloudflare"));
+    assert.ok(data.providerAttempts.some(attempt => attempt.provider === "groq" && attempt.status === "request_failed"));
+    assert.doesNotMatch(JSON.stringify(data), /secret-malformed-test|malformed secret provider response/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("provider timeout is classified and falls back to the next approved provider", async () => {
+  const originalFetch = globalThis.fetch;
+  let externalCalls = 0;
+  globalThis.fetch = async () => {
+    externalCalls++;
+    const error = new Error("internal timeout detail");
+    error.name = "TimeoutError";
+    throw error;
+  };
+  try {
+    const env = baseEnv({
+      SAFE_AUTOMATON_AI_ORDER: "groq,cloudflare",
+      SAFE_AUTOMATON_GROQ_FREE_ONLY: "YES_FREE_ONLY",
+      SAFE_AUTOMATON_GROQ_MODEL: "openai/gpt-oss-20b",
+      GROQ_API_KEY: "secret-timeout-test",
+      AI: { run: async () => ({ response: "Pregled za ljudsku proveru." }) }
+    });
+    const { response, data } = await call(request(), env);
+    assert.equal(response.status, 200);
+    assert.equal(externalCalls, 3);
+    assert.ok(data.agents.every(agent => agent.provider === "cloudflare"));
+    assert.ok(data.providerAttempts.some(attempt => attempt.provider === "groq" && attempt.status === "timeout"));
+    assert.doesNotMatch(JSON.stringify(data), /secret-timeout-test|internal timeout detail/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("unapproved providers are skipped and OpenRouter rejects models not explicitly marked :free", async () => {
   const env = baseEnv({
     SAFE_AUTOMATON_AI_ORDER: "groq,openrouter",
@@ -271,3 +356,77 @@ test("AI enable flag diagnostics do not expose its value and fail closed for inv
   assert.equal(modelCalls, 0);
 });
 
+
+
+test("NVIDIA NIM is an opt-in OpenAI-compatible fallback and never runs without free-only approval", async () => {
+  const originalFetch = globalThis.fetch;
+  const seen = [];
+  globalThis.fetch = async (url, options) => {
+    seen.push({ url, payload: JSON.parse(options.body) });
+    return new Response(JSON.stringify({ choices: [{ message: { content: "NVIDIA draft" } }] }), {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  };
+  try {
+    const common = {
+      SAFE_AUTOMATON_AI_ORDER: "nvidia_nim",
+      NVIDIA_NIM_API_KEY: "secret-nvidia-test",
+      SAFE_AUTOMATON_NVIDIA_NIM_MODEL: "meta/llama-3.1-8b-instruct"
+    };
+    const blocked = await call(request(), baseEnv({ ...common, SAFE_AUTOMATON_NVIDIA_NIM_FREE_ONLY: "NO" }));
+    assert.equal(blocked.response.status, 503);
+    assert.equal(blocked.data.diagnosticCode, "NO_APPROVED_FREE_PROVIDER");
+    assert.equal(seen.length, 0);
+
+    const allowed = await call(request(), baseEnv({ ...common, SAFE_AUTOMATON_NVIDIA_NIM_FREE_ONLY: "YES_FREE_ONLY" }));
+    assert.equal(allowed.response.status, 200);
+    assert.equal(seen.length, 3);
+    assert.ok(seen.every(x => x.url === "https://integrate.api.nvidia.com/v1/chat/completions"));
+    assert.ok(allowed.data.agents.every(a => a.provider === "nvidia_nim"));
+    assert.doesNotMatch(JSON.stringify(allowed.data), /secret-nvidia-test/);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("FreeLLMAPI proxy is opt-in, requires an HTTPS endpoint, and uses the configured unified key", async () => {
+  const originalFetch = globalThis.fetch;
+  const seen = [];
+  globalThis.fetch = async (url, options) => {
+    seen.push({ url, authorization: options.headers.Authorization, model: JSON.parse(options.body).model });
+    return new Response(JSON.stringify({ choices: [{ message: { content: "FreeLLMAPI draft" } }] }), {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  };
+  try {
+    const common = {
+      SAFE_AUTOMATON_AI_ORDER: "freellmapi",
+      SAFE_AUTOMATON_FREELLMAPI_BASE_URL: "https://router.example.com/v1/",
+      SAFE_AUTOMATON_FREELLMAPI_API_KEY: "secret-freellmapi-test",
+      SAFE_AUTOMATON_FREELLMAPI_MODEL: "auto"
+    };
+    for (const unsafeEndpoint of [
+      "http://localhost:3001/v1",
+      "https://127.0.0.1/v1",
+      "https://192.168.1.10/v1",
+      "https://router.example.test/v1",
+      "https://service.internal/v1"
+    ]) {
+      const blocked = await call(request(), baseEnv({
+        ...common,
+        SAFE_AUTOMATON_FREELLMAPI_FREE_ONLY: "YES_FREE_ONLY",
+        SAFE_AUTOMATON_FREELLMAPI_BASE_URL: unsafeEndpoint
+      }));
+      assert.equal(blocked.response.status, 503, unsafeEndpoint);
+      assert.equal(blocked.data.diagnosticCode, "NO_APPROVED_FREE_PROVIDER", unsafeEndpoint);
+      assert.equal(seen.length, 0, unsafeEndpoint);
+    }
+
+    const allowed = await call(request(), baseEnv({ ...common, SAFE_AUTOMATON_FREELLMAPI_FREE_ONLY: "YES_FREE_ONLY" }));
+    assert.equal(allowed.response.status, 200);
+    assert.equal(seen.length, 3);
+    assert.ok(seen.every(x => x.url === "https://router.example.com/v1/chat/completions"));
+    assert.ok(seen.every(x => x.authorization === "Bearer secret-freellmapi-test"));
+    assert.ok(seen.every(x => x.model === "auto"));
+    assert.ok(allowed.data.agents.every(a => a.provider === "freellmapi"));
+    assert.doesNotMatch(JSON.stringify(allowed.data), /secret-freellmapi-test/);
+  } finally { globalThis.fetch = originalFetch; }
+});

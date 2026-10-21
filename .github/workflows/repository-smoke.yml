@@ -5,11 +5,13 @@ on:
     branches:
       - phase-0-1-safe-research-foundation
       - feature/free-ai-pool-router
+      - feat/unified-free-ai-orchestrator
       - main
       - integration/main-consolidation
   pull_request:
     branches:
       - main
+      - integration/main-consolidation
 
 permissions:
   contents: read
