@@ -271,3 +271,65 @@ test("AI enable flag diagnostics do not expose its value and fail closed for inv
   assert.equal(modelCalls, 0);
 });
 
+
+
+test("NVIDIA NIM is an opt-in OpenAI-compatible fallback and never runs without free-only approval", async () => {
+  const originalFetch = globalThis.fetch;
+  const seen = [];
+  globalThis.fetch = async (url, options) => {
+    seen.push({ url, payload: JSON.parse(options.body) });
+    return new Response(JSON.stringify({ choices: [{ message: { content: "NVIDIA draft" } }] }), {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  };
+  try {
+    const common = {
+      SAFE_AUTOMATON_AI_ORDER: "nvidia_nim",
+      NVIDIA_NIM_API_KEY: "secret-nvidia-test",
+      SAFE_AUTOMATON_NVIDIA_NIM_MODEL: "meta/llama-3.1-8b-instruct"
+    };
+    const blocked = await call(request(), baseEnv({ ...common, SAFE_AUTOMATON_NVIDIA_NIM_FREE_ONLY: "NO" }));
+    assert.equal(blocked.response.status, 503);
+    assert.equal(blocked.data.diagnosticCode, "NO_APPROVED_FREE_PROVIDER");
+    assert.equal(seen.length, 0);
+
+    const allowed = await call(request(), baseEnv({ ...common, SAFE_AUTOMATON_NVIDIA_NIM_FREE_ONLY: "YES_FREE_ONLY" }));
+    assert.equal(allowed.response.status, 200);
+    assert.equal(seen.length, 3);
+    assert.ok(seen.every(x => x.url === "https://integrate.api.nvidia.com/v1/chat/completions"));
+    assert.ok(allowed.data.agents.every(a => a.provider === "nvidia_nim"));
+    assert.doesNotMatch(JSON.stringify(allowed.data), /secret-nvidia-test/);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("FreeLLMAPI proxy is opt-in, requires an HTTPS endpoint, and uses the configured unified key", async () => {
+  const originalFetch = globalThis.fetch;
+  const seen = [];
+  globalThis.fetch = async (url, options) => {
+    seen.push({ url, authorization: options.headers.Authorization, model: JSON.parse(options.body).model });
+    return new Response(JSON.stringify({ choices: [{ message: { content: "FreeLLMAPI draft" } }] }), {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  };
+  try {
+    const common = {
+      SAFE_AUTOMATON_AI_ORDER: "freellmapi",
+      SAFE_AUTOMATON_FREELLMAPI_BASE_URL: "https://router.example.test/v1/",
+      SAFE_AUTOMATON_FREELLMAPI_API_KEY: "secret-freellmapi-test",
+      SAFE_AUTOMATON_FREELLMAPI_MODEL: "auto"
+    };
+    const blocked = await call(request(), baseEnv({ ...common, SAFE_AUTOMATON_FREELLMAPI_FREE_ONLY: "YES_FREE_ONLY", SAFE_AUTOMATON_FREELLMAPI_BASE_URL: "http://localhost:3001/v1" }));
+    assert.equal(blocked.response.status, 503);
+    assert.equal(blocked.data.diagnosticCode, "NO_APPROVED_FREE_PROVIDER");
+    assert.equal(seen.length, 0);
+
+    const allowed = await call(request(), baseEnv({ ...common, SAFE_AUTOMATON_FREELLMAPI_FREE_ONLY: "YES_FREE_ONLY" }));
+    assert.equal(allowed.response.status, 200);
+    assert.equal(seen.length, 3);
+    assert.ok(seen.every(x => x.url === "https://router.example.test/v1/chat/completions"));
+    assert.ok(seen.every(x => x.authorization === "Bearer secret-freellmapi-test"));
+    assert.ok(seen.every(x => x.model === "auto"));
+    assert.ok(allowed.data.agents.every(a => a.provider === "freellmapi"));
+    assert.doesNotMatch(JSON.stringify(allowed.data), /secret-freellmapi-test/);
+  } finally { globalThis.fetch = originalFetch; }
+});
