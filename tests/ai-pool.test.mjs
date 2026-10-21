@@ -145,6 +145,62 @@ test("empty Cloudflare output falls back to the next approved provider without e
   }
 });
 
+test("malformed provider JSON falls back safely and does not expose response details", async () => {
+  const originalFetch = globalThis.fetch;
+  let externalCalls = 0;
+  globalThis.fetch = async () => {
+    externalCalls++;
+    return new Response("malformed secret provider response", {
+      status: 200, headers: { "Content-Type": "application/json" }
+    });
+  };
+  try {
+    const env = baseEnv({
+      SAFE_AUTOMATON_AI_ORDER: "groq,cloudflare",
+      SAFE_AUTOMATON_GROQ_FREE_ONLY: "YES_FREE_ONLY",
+      SAFE_AUTOMATON_GROQ_MODEL: "openai/gpt-oss-20b",
+      GROQ_API_KEY: "secret-malformed-test",
+      AI: { run: async () => ({ response: "Pregled za ljudsku proveru." }) }
+    });
+    const { response, data } = await call(request(), env);
+    assert.equal(response.status, 200);
+    assert.equal(externalCalls, 1);
+    assert.ok(data.agents.every(agent => agent.provider === "cloudflare"));
+    assert.ok(data.providerAttempts.some(attempt => attempt.provider === "groq" && attempt.status === "request_failed"));
+    assert.doesNotMatch(JSON.stringify(data), /secret-malformed-test|malformed secret provider response/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("provider timeout is classified and falls back to the next approved provider", async () => {
+  const originalFetch = globalThis.fetch;
+  let externalCalls = 0;
+  globalThis.fetch = async () => {
+    externalCalls++;
+    const error = new Error("internal timeout detail");
+    error.name = "TimeoutError";
+    throw error;
+  };
+  try {
+    const env = baseEnv({
+      SAFE_AUTOMATON_AI_ORDER: "groq,cloudflare",
+      SAFE_AUTOMATON_GROQ_FREE_ONLY: "YES_FREE_ONLY",
+      SAFE_AUTOMATON_GROQ_MODEL: "openai/gpt-oss-20b",
+      GROQ_API_KEY: "secret-timeout-test",
+      AI: { run: async () => ({ response: "Pregled za ljudsku proveru." }) }
+    });
+    const { response, data } = await call(request(), env);
+    assert.equal(response.status, 200);
+    assert.equal(externalCalls, 1);
+    assert.ok(data.agents.every(agent => agent.provider === "cloudflare"));
+    assert.ok(data.providerAttempts.some(attempt => attempt.provider === "groq" && attempt.status === "timeout"));
+    assert.doesNotMatch(JSON.stringify(data), /secret-timeout-test|internal timeout detail/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("unapproved providers are skipped and OpenRouter rejects models not explicitly marked :free", async () => {
   const env = baseEnv({
     SAFE_AUTOMATON_AI_ORDER: "groq,openrouter",
