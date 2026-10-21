@@ -203,8 +203,8 @@ function validConfiguredBaseUrl(value) {
   if (typeof value !== "string" || !value.trim()) return false;
   try {
     const url = new URL(value.trim());
-    const hostname = url.hostname.toLowerCase().replace(/\\.$/, "");
-    const isIpLiteral = /^(?:\\d{1,3}\\.){3}\\d{1,3}$/.test(hostname)
+    const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+    const isIpLiteral = /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname)
       || (hostname.startsWith("[") && hostname.endsWith("]"));
     const localOnlySuffix = [".localhost", ".local", ".internal", ".lan", ".test", ".example", ".invalid"];
     return url.protocol === "https:" && Boolean(hostname) && !isIpLiteral && !url.username && !url.password && !url.search && !url.hash
