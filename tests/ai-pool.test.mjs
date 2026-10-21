@@ -164,7 +164,7 @@ test("malformed provider JSON falls back safely and does not expose response det
     });
     const { response, data } = await call(request(), env);
     assert.equal(response.status, 200);
-    assert.equal(externalCalls, 1);
+    assert.equal(externalCalls, 3);
     assert.ok(data.agents.every(agent => agent.provider === "cloudflare"));
     assert.ok(data.providerAttempts.some(attempt => attempt.provider === "groq" && attempt.status === "request_failed"));
     assert.doesNotMatch(JSON.stringify(data), /secret-malformed-test|malformed secret provider response/);
@@ -192,7 +192,7 @@ test("provider timeout is classified and falls back to the next approved provide
     });
     const { response, data } = await call(request(), env);
     assert.equal(response.status, 200);
-    assert.equal(externalCalls, 1);
+    assert.equal(externalCalls, 3);
     assert.ok(data.agents.every(agent => agent.provider === "cloudflare"));
     assert.ok(data.providerAttempts.some(attempt => attempt.provider === "groq" && attempt.status === "timeout"));
     assert.doesNotMatch(JSON.stringify(data), /secret-timeout-test|internal timeout detail/);
