@@ -1,7 +1,7 @@
 const MAX_BODY_BYTES = 12_000;
 const MAX_TEXT = 4_000;
 const TASKS = new Set(["seo", "research", "qa", "scope"]);
-const DEFAULT_ORDER = ["cloudflare", "gemini_primary", "gemini_secondary", "gemini_tertiary", "groq", "mistral", "openrouter", "huggingface", "deepseek", "xai"];
+const DEFAULT_ORDER = ["cloudflare", "gemini_primary", "gemini_secondary", "gemini_tertiary", "groq", "mistral", "openrouter", "huggingface", "deepseek", "xai", "nvidia_nim", "freellmapi"];
 const PROVIDERS = {
   gemini_primary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY_PRIMARY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_PRIMARY" },
   gemini_secondary: { kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", key: "GEMINI_API_KEY_SECONDARY", approval: "SAFE_AUTOMATON_GEMINI_FREE_ONLY", model: "SAFE_AUTOMATON_GEMINI_MODEL_SECONDARY" },
@@ -12,7 +12,9 @@ const PROVIDERS = {
   openrouter: { kind: "openai", baseUrl: "https://openrouter.ai/api/v1", key: "OPENROUTER_API_KEY", approval: "SAFE_AUTOMATON_OPENROUTER_FREE_ONLY", model: "SAFE_AUTOMATON_OPENROUTER_MODEL", requireFreeModel: true },
   huggingface: { kind: "openai", baseUrl: "https://router.huggingface.co/v1", key: "HF_TOKEN", approval: "SAFE_AUTOMATON_HUGGINGFACE_FREE_ONLY", model: "SAFE_AUTOMATON_HUGGINGFACE_MODEL" },
   deepseek: { kind: "openai", baseUrl: "https://api.deepseek.com", key: "DEEPSEEK_API_KEY", approval: "SAFE_AUTOMATON_DEEPSEEK_FREE_ONLY", model: "SAFE_AUTOMATON_DEEPSEEK_MODEL" },
-  xai: { kind: "openai", baseUrl: "https://api.x.ai/v1", key: "XAI_API_KEY", approval: "SAFE_AUTOMATON_XAI_FREE_ONLY", model: "SAFE_AUTOMATON_XAI_MODEL" }
+  xai: { kind: "openai", baseUrl: "https://api.x.ai/v1", key: "XAI_API_KEY", approval: "SAFE_AUTOMATON_XAI_FREE_ONLY", model: "SAFE_AUTOMATON_XAI_MODEL" },
+  nvidia_nim: { kind: "openai", baseUrl: "https://integrate.api.nvidia.com/v1", key: "NVIDIA_NIM_API_KEY", approval: "SAFE_AUTOMATON_NVIDIA_NIM_FREE_ONLY", model: "SAFE_AUTOMATON_NVIDIA_NIM_MODEL" },
+  freellmapi: { kind: "openai", baseUrlEnv: "SAFE_AUTOMATON_FREELLMAPI_BASE_URL", key: "SAFE_AUTOMATON_FREELLMAPI_API_KEY", approval: "SAFE_AUTOMATON_FREELLMAPI_FREE_ONLY", model: "SAFE_AUTOMATON_FREELLMAPI_MODEL" }
 };
 const AGENTS = [
   { id: "planner", name: "Agent 1 — Planner", instruction: "Pretvori brief u kratak plan rada. Navedi cilj, isporuke, korake, nepoznanice, rizike i kriterijume prihvatanja. Ne izmišljaj činjenice." },
@@ -191,10 +193,22 @@ function providerChecks(id, config, env) {
   if (typeof env[config.key] !== "string" || !env[config.key].trim()) checks.push("api_key_missing");
   if (typeof env[config.model] !== "string" || !env[config.model].trim()) checks.push("model_missing");
   else if (config.requireFreeModel && !env[config.model].trim().endsWith(":free")) checks.push("model_not_marked_free");
+  if (config.baseUrlEnv && !validConfiguredBaseUrl(env[config.baseUrlEnv])) checks.push("endpoint_missing_or_invalid");
   return checks;
 }
 function isAvailable(id, config, env) {
   return providerChecks(id, config, env).length === 0;
+}
+function validConfiguredBaseUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return false;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" && Boolean(url.hostname) && !url.username && !url.password && !url.search && !url.hash
+      && url.hostname !== "localhost" && !url.hostname.endsWith(".localhost") && !url.hostname.endsWith(".local");
+  } catch { return false; }
+}
+function normalizeBaseUrl(value) {
+  return value.trim().replace(/\/+$/, "");
 }
 function parseOrder(value) {
   if (typeof value !== "string" || !value.trim()) return DEFAULT_ORDER;
@@ -231,7 +245,8 @@ async function callCloudflare(binding, model, messages) {
 }
 async function callOpenAICompatible(id, config, env, messages, timeoutMs = 7_000) {
   const model = env[config.model].trim();
-  const response = await fetch(config.baseUrl + "/chat/completions", {
+  const baseUrl = config.baseUrlEnv ? normalizeBaseUrl(env[config.baseUrlEnv]) : config.baseUrl;
+  const response = await fetch(baseUrl + "/chat/completions", {
     method: "POST",
     headers: { "Authorization": "Bearer " + env[config.key], "Content-Type": "application/json" },
     body: JSON.stringify({ model, messages, max_tokens: 1_000, temperature: 0.2 }),
