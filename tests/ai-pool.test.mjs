@@ -318,10 +318,22 @@ test("FreeLLMAPI proxy is opt-in, requires an HTTPS endpoint, and uses the confi
       SAFE_AUTOMATON_FREELLMAPI_API_KEY: "secret-freellmapi-test",
       SAFE_AUTOMATON_FREELLMAPI_MODEL: "auto"
     };
-    const blocked = await call(request(), baseEnv({ ...common, SAFE_AUTOMATON_FREELLMAPI_FREE_ONLY: "YES_FREE_ONLY", SAFE_AUTOMATON_FREELLMAPI_BASE_URL: "http://localhost:3001/v1" }));
-    assert.equal(blocked.response.status, 503);
-    assert.equal(blocked.data.diagnosticCode, "NO_APPROVED_FREE_PROVIDER");
-    assert.equal(seen.length, 0);
+    for (const unsafeEndpoint of [
+      "http://localhost:3001/v1",
+      "https://127.0.0.1/v1",
+      "https://192.168.1.10/v1",
+      "https://router.example.test/v1",
+      "https://service.internal/v1"
+    ]) {
+      const blocked = await call(request(), baseEnv({
+        ...common,
+        SAFE_AUTOMATON_FREELLMAPI_FREE_ONLY: "YES_FREE_ONLY",
+        SAFE_AUTOMATON_FREELLMAPI_BASE_URL: unsafeEndpoint
+      }));
+      assert.equal(blocked.response.status, 503, unsafeEndpoint);
+      assert.equal(blocked.data.diagnosticCode, "NO_APPROVED_FREE_PROVIDER", unsafeEndpoint);
+      assert.equal(seen.length, 0, unsafeEndpoint);
+    }
 
     const allowed = await call(request(), baseEnv({ ...common, SAFE_AUTOMATON_FREELLMAPI_FREE_ONLY: "YES_FREE_ONLY" }));
     assert.equal(allowed.response.status, 200);
