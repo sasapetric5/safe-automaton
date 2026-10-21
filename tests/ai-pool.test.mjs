@@ -314,7 +314,7 @@ test("FreeLLMAPI proxy is opt-in, requires an HTTPS endpoint, and uses the confi
   try {
     const common = {
       SAFE_AUTOMATON_AI_ORDER: "freellmapi",
-      SAFE_AUTOMATON_FREELLMAPI_BASE_URL: "https://router.example.test/v1/",
+      SAFE_AUTOMATON_FREELLMAPI_BASE_URL: "https://router.example.com/v1/",
       SAFE_AUTOMATON_FREELLMAPI_API_KEY: "secret-freellmapi-test",
       SAFE_AUTOMATON_FREELLMAPI_MODEL: "auto"
     };
@@ -326,7 +326,7 @@ test("FreeLLMAPI proxy is opt-in, requires an HTTPS endpoint, and uses the confi
     const allowed = await call(request(), baseEnv({ ...common, SAFE_AUTOMATON_FREELLMAPI_FREE_ONLY: "YES_FREE_ONLY" }));
     assert.equal(allowed.response.status, 200);
     assert.equal(seen.length, 3);
-    assert.ok(seen.every(x => x.url === "https://router.example.test/v1/chat/completions"));
+    assert.ok(seen.every(x => x.url === "https://router.example.com/v1/chat/completions"));
     assert.ok(seen.every(x => x.authorization === "Bearer secret-freellmapi-test"));
     assert.ok(seen.every(x => x.model === "auto"));
     assert.ok(allowed.data.agents.every(a => a.provider === "freellmapi"));
