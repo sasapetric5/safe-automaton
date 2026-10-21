@@ -203,8 +203,13 @@ function validConfiguredBaseUrl(value) {
   if (typeof value !== "string" || !value.trim()) return false;
   try {
     const url = new URL(value.trim());
-    return url.protocol === "https:" && Boolean(url.hostname) && !url.username && !url.password && !url.search && !url.hash
-      && url.hostname !== "localhost" && !url.hostname.endsWith(".localhost") && !url.hostname.endsWith(".local");
+    const hostname = url.hostname.toLowerCase().replace(/\\.$/, "");
+    const isIpLiteral = /^(?:\\d{1,3}\\.){3}\\d{1,3}$/.test(hostname)
+      || (hostname.startsWith("[") && hostname.endsWith("]"));
+    const localOnlySuffix = [".localhost", ".local", ".internal", ".lan", ".test", ".example", ".invalid"];
+    return url.protocol === "https:" && Boolean(hostname) && !isIpLiteral && !url.username && !url.password && !url.search && !url.hash
+      && hostname !== "localhost" && hostname !== "home.arpa"
+      && !localOnlySuffix.some(suffix => hostname.endsWith(suffix));
   } catch { return false; }
 }
 function normalizeBaseUrl(value) {
