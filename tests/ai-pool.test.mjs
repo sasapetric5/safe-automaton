@@ -116,6 +116,35 @@ test("fallback moves to an explicitly approved provider after Cloudflare quota f
   } finally { globalThis.fetch = originalFetch; }
 });
 
+test("empty Cloudflare output falls back to the next approved provider without exposing credentials", async () => {
+  const originalFetch = globalThis.fetch;
+  let externalCalls = 0;
+  globalThis.fetch = async (url, options) => {
+    externalCalls++;
+    assert.equal(url, "https://api.groq.com/openai/v1/chat/completions");
+    return new Response(JSON.stringify({
+      choices: [{ message: { content: externalCalls === 3 ? "Pregled završен.\\nIZVEŠTAJ ZAVRŠEN" : "Rezultat za pregled." } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const env = baseEnv({
+      SAFE_AUTOMATON_AI_ORDER: "cloudflare,groq",
+      SAFE_AUTOMATON_GROQ_FREE_ONLY: "YES_FREE_ONLY",
+      SAFE_AUTOMATON_GROQ_MODEL: "openai/gpt-oss-20b",
+      GROQ_API_KEY: "secret-empty-fallback-test",
+      AI: { run: async () => ({ response: "   " }) }
+    });
+    const { response, data } = await call(request(), env);
+    assert.equal(response.status, 200);
+    assert.equal(externalCalls, 3);
+    assert.ok(data.agents.every(agent => agent.provider === "groq"));
+    assert.ok(data.providerAttempts.filter(attempt => attempt.provider === "cloudflare").every(attempt => attempt.status === "empty_response"));
+    assert.doesNotMatch(JSON.stringify(data), /secret-empty-fallback-test/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("unapproved providers are skipped and OpenRouter rejects models not explicitly marked :free", async () => {
   const env = baseEnv({
     SAFE_AUTOMATON_AI_ORDER: "groq,openrouter",
